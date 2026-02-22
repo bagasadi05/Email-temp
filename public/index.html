@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
   <div id="app">
     <!-- Header -->
@@ -59,8 +61,9 @@
         <h2 class="section-title"><i class="fas fa-globe"></i> Langkah 1: Pilih Domain</h2>
         <div class="card-section">
           <label class="label-upper">DOMAIN TERSEDIA (REAL)</label>
-          <p class="hint-text">Pilih salah satu domain. <strong>⭐ maildrop.cc</strong> lebih diterima oleh banyak layanan. Domain lain dari <strong>mail.tm/mail.gw</strong>.</p>
-          
+          <p class="hint-text">Pilih salah satu domain. <strong>⭐ maildrop.cc</strong> lebih diterima oleh banyak
+            layanan. Domain lain dari <strong>mail.tm/mail.gw</strong>.</p>
+
           <div class="domain-grid" id="domain-grid">
             <div class="loading-spinner">
               <i class="fas fa-spinner fa-spin"></i>
@@ -73,7 +76,8 @@
       <div class="card info-card">
         <div class="info-icon"><i class="fas fa-info-circle"></i></div>
         <div class="info-text">
-          <strong>Cara Kerja:</strong> Pilih domain, buat email, lalu kirim email ke alamat tersebut dari email lain. Pesan akan muncul di Mailbox secara real-time!
+          <strong>Cara Kerja:</strong> Pilih domain, buat email, lalu kirim email ke alamat tersebut dari email lain.
+          Pesan akan muncul di Mailbox secara real-time!
         </div>
       </div>
 
@@ -82,13 +86,16 @@
         <h2 class="section-title"><i class="fas fa-cloud"></i> Subdomain Custom</h2>
         <div class="card-section">
           <label class="label-upper">CLOUDFLARE EMAIL ROUTING</label>
-          <p class="hint-text">Buat subdomain di domain Anda sendiri. Email ke <strong>user@subdomain.domain.com</strong> akan diterima secara real.</p>
+          <p class="hint-text">Buat subdomain di domain Anda sendiri. Email ke
+            <strong>user@subdomain.domain.com</strong> akan diterima secara real.
+          </p>
         </div>
 
         <div class="card-section">
           <label class="label-normal">Buat Subdomain Baru</label>
           <div class="subdomain-create-row">
-            <input type="text" id="cf-subdomain-name" placeholder="contoh: edu" class="input-subdomain" autocomplete="off">
+            <input type="text" id="cf-subdomain-name" placeholder="contoh: edu" class="input-subdomain"
+              autocomplete="off">
             <span class="subdomain-create-dot">.</span>
             <span class="subdomain-create-domain" id="cf-base-domain">domain.com</span>
             <button class="btn-cf-create" id="btn-cf-create-subdomain">
@@ -107,7 +114,7 @@
     <div class="page hidden" id="page-email">
       <div class="card">
         <h2 class="section-title"><i class="fas fa-at"></i> Langkah 2: Buat Email</h2>
-        
+
         <div class="card-section">
           <div class="domain-badge">
             <span class="badge-label">Domain Aktif:</span>
@@ -121,11 +128,13 @@
         <div class="card-section">
           <label class="label-normal">Subdomain <span class="optional-tag">(opsional)</span></label>
           <div class="subdomain-input-row">
-            <input type="text" id="email-subdomain" placeholder="contoh: myshop" class="input-subdomain" autocomplete="off">
+            <input type="text" id="email-subdomain" placeholder="contoh: myshop" class="input-subdomain"
+              autocomplete="off">
             <span class="subdomain-separator">—</span>
             <span class="subdomain-domain" id="subdomain-domain-text">domain.com</span>
           </div>
-          <p class="hint-text hint-small">Subdomain akan menjadi prefix pada alamat email Anda (dipisah tanda hubung).</p>
+          <p class="hint-text hint-small">Subdomain akan menjadi prefix pada alamat email Anda (dipisah tanda hubung).
+          </p>
         </div>
 
         <div class="card-section">
@@ -202,20 +211,23 @@
                 <i class="fas fa-trash"></i>
               </button>
             </div>
-            <p class="hint-text hint-small">Kirim email ke alamat di atas untuk menguji. Pesan akan muncul dalam beberapa detik.</p>
+            <p class="hint-text hint-small">Kirim email ke alamat di atas untuk menguji. Pesan akan muncul dalam
+              beberapa detik.</p>
           </div>
-          
+
           <!-- Quick Signup Section -->
           <div class="quick-signup-section" id="quick-signup-section" style="display:none;">
             <label class="label-normal" style="margin-top: 16px;">
               <i class="fas fa-rocket"></i> Quick Signup
             </label>
-            <p class="hint-text hint-small">Email akan otomatis ter-copy dan halaman signup terbuka di In-App Browser</p>
+            <p class="hint-text hint-small">Email akan otomatis ter-copy dan halaman signup terbuka di tab baru
+            </p>
             <div class="quick-signup-buttons">
               <button class="btn-quick-signup" data-platform="klingai" data-url="https://klingai.com/">
                 <i class="fas fa-video"></i> Kling AI
               </button>
-              <button class="btn-quick-signup" data-platform="midjourney" data-url="https://www.midjourney.com/account/">
+              <button class="btn-quick-signup" data-platform="midjourney"
+                data-url="https://www.midjourney.com/account/">
                 <i class="fas fa-palette"></i> Midjourney
               </button>
               <button class="btn-quick-signup" data-platform="openai" data-url="https://platform.openai.com/signup">
@@ -306,7 +318,8 @@
         </div>
       </div>
       <div class="cf-settings-body">
-        <p class="hint-text" style="margin-bottom:16px">Hubungkan domain Anda melalui Cloudflare Email Routing untuk mendapatkan <strong>subdomain asli</strong> (contoh: <code>user@edu.domain.com</code>).</p>
+        <p class="hint-text" style="margin-bottom:16px">Hubungkan domain Anda melalui Cloudflare Email Routing untuk
+          mendapatkan <strong>subdomain asli</strong> (contoh: <code>user@edu.domain.com</code>).</p>
 
         <div class="cf-status" id="cf-status">
           <i class="fas fa-times-circle"></i> Belum dikonfigurasi
@@ -326,7 +339,8 @@
               Prasyarat
             </div>
             <ul class="guide-list">
-              <li>Akun Cloudflare (gratis) — <a href="https://dash.cloudflare.com/sign-up" target="_blank">daftar di sini</a></li>
+              <li>Akun Cloudflare (gratis) — <a href="https://dash.cloudflare.com/sign-up" target="_blank">daftar di
+                  sini</a></li>
               <li>Domain yang sudah terdaftar di Cloudflare (nameserver mengarah ke Cloudflare)</li>
               <li>Email Routing sudah diaktifkan (enable) di Cloudflare Dashboard</li>
             </ul>
@@ -340,7 +354,8 @@
             </div>
             <div class="guide-content">
               <ol class="guide-ordered-list">
-                <li>Buka <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">dash.cloudflare.com/profile/api-tokens</a></li>
+                <li>Buka <a href="https://dash.cloudflare.com/profile/api-tokens"
+                    target="_blank">dash.cloudflare.com/profile/api-tokens</a></li>
                 <li>Klik <span class="guide-btn-label">Create Token</span></li>
                 <li>Pilih <span class="guide-btn-label">Create Custom Token</span> (paling bawah)</li>
                 <li>Isi nama token, misal: <code>Email Temp App</code></li>
@@ -369,11 +384,13 @@
                     Include → Specific zone → <em>pilih domain Anda</em>
                   </div>
                 </li>
-                <li>Klik <span class="guide-btn-label">Continue to summary</span> → <span class="guide-btn-label">Create Token</span></li>
+                <li>Klik <span class="guide-btn-label">Continue to summary</span> → <span class="guide-btn-label">Create
+                    Token</span></li>
                 <li>
                   <div class="guide-warning">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <strong>PENTING:</strong> Salin token yang muncul sekarang! Token hanya ditampilkan <strong>sekali</strong> dan tidak bisa dilihat lagi.
+                    <strong>PENTING:</strong> Salin token yang muncul sekarang! Token hanya ditampilkan
+                    <strong>sekali</strong> dan tidak bisa dilihat lagi.
                   </div>
                 </li>
                 <li>Paste token ke kolom <strong>API Token</strong> di form bawah</li>
@@ -410,7 +427,8 @@
               Account ID <span class="optional-tag">(opsional)</span>
             </div>
             <div class="guide-content">
-              <p class="guide-desc">Account ID ada di lokasi yang sama dengan Zone ID (panel kanan bawah halaman Overview). Biasanya opsional karena token sudah terikat ke zone tertentu.</p>
+              <p class="guide-desc">Account ID ada di lokasi yang sama dengan Zone ID (panel kanan bawah halaman
+                Overview). Biasanya opsional karena token sudah terikat ke zone tertentu.</p>
               <div class="guide-note">
                 <i class="fas fa-lightbulb"></i>
                 Bisa dikosongkan jika tidak diperlukan. Isi hanya jika API mengembalikan error terkait account.
@@ -435,7 +453,8 @@
                     Cloudflare akan menambahkan MX record otomatis. Klik Accept jika diminta.
                   </div>
                 </li>
-                <li>Pastikan status Email Routing berubah menjadi <span style="color:var(--success);font-weight:600">Active</span></li>
+                <li>Pastikan status Email Routing berubah menjadi <span
+                    style="color:var(--success);font-weight:600">Active</span></li>
               </ol>
             </div>
           </div>
@@ -449,7 +468,9 @@
             <div class="guide-content">
               <ol class="guide-ordered-list">
                 <li>Isi semua kolom di form di bawah panduan ini</li>
-                <li>Kolom <strong>Base Domain</strong> = domain utama yang terdaftar di Cloudflare (misal: <code>mydomain.com</code>)</li>
+                <li>Kolom <strong>Base Domain</strong> = domain utama yang terdaftar di Cloudflare (misal:
+                  <code>mydomain.com</code>)
+                </li>
                 <li>Klik <span class="guide-btn-label">Simpan & Hubungkan</span></li>
                 <li>Sistem akan memverifikasi token dan zone ID Anda otomatis</li>
               </ol>
@@ -499,7 +520,8 @@
               <div class="guide-faq">
                 <div class="faq-item">
                   <strong>❌ "Token verification failed"</strong>
-                  <p>Token salah atau belum punya permission yang cukup. Buat ulang token dengan permission Zone.DNS (Edit) dan Email Routing Rules (Edit).</p>
+                  <p>Token salah atau belum punya permission yang cukup. Buat ulang token dengan permission Zone.DNS
+                    (Edit) dan Email Routing Rules (Edit).</p>
                 </div>
                 <div class="faq-item">
                   <strong>❌ "Zone not found"</strong>
@@ -508,13 +530,14 @@
                 <div class="faq-item">
                   <strong>❌ Email tidak masuk ke Mailbox</strong>
                   <p>1) Pastikan Email Routing sudah Active di Cloudflare.<br>
-                  2) Tunggu 1-5 menit untuk propagasi DNS.<br>
-                  3) Pastikan destination address sudah terverifikasi (cek email dari Cloudflare).<br>
-                  4) Klik tombol "Verifikasi" pada subdomain untuk auto-check.</p>
+                    2) Tunggu 1-5 menit untuk propagasi DNS.<br>
+                    3) Pastikan destination address sudah terverifikasi (cek email dari Cloudflare).<br>
+                    4) Klik tombol "Verifikasi" pada subdomain untuk auto-check.</p>
                 </div>
                 <div class="faq-item">
                   <strong>❌ "MX record already exists"</strong>
-                  <p>Subdomain sudah punya MX record. Hapus dulu di Cloudflare Dashboard → DNS → Records, lalu coba lagi.</p>
+                  <p>Subdomain sudah punya MX record. Hapus dulu di Cloudflare Dashboard → DNS → Records, lalu coba
+                    lagi.</p>
                 </div>
               </div>
             </div>
@@ -525,7 +548,8 @@
         <div class="cf-form">
           <label class="label-normal">API Token <span class="required">*</span></label>
           <input type="password" id="cf-api-token" placeholder="Cloudflare API Token" class="input-cf">
-          <p class="hint-text hint-small">Buat di Cloudflare Dashboard → My Profile → API Tokens. Perlu permission: Zone.DNS (Edit), Email Routing (Edit).</p>
+          <p class="hint-text hint-small">Buat di Cloudflare Dashboard → My Profile → API Tokens. Perlu permission:
+            Zone.DNS (Edit), Email Routing (Edit).</p>
 
           <label class="label-normal">Zone ID <span class="required">*</span></label>
           <input type="text" id="cf-zone-id" placeholder="Zone ID dari Cloudflare" class="input-cf">
@@ -554,29 +578,42 @@
           <h3 class="modal-title"><i class="fas fa-network-wired"></i> Proxy Settings</h3>
           <button class="btn-close" id="btn-close-proxy-settings"><i class="fas fa-times"></i></button>
         </div>
-        
+
         <div class="card-section">
-          <p class="hint-text">Gunakan proxy untuk mengubah IP saat mengakses API backend (mail.tm, maildrop, dll) dan saat membuka In-App Browser.</p>
-          
+          <p class="hint-text">Gunakan proxy (seperti Urban VPN) untuk mengubah IP saat mengakses API backend (mail.tm,
+            maildrop, dll).</p>
+
           <label class="label-normal" style="margin-top: 16px;">Status Proxy Backend</label>
           <div class="proxy-status-box" id="proxy-status-box">
             <i class="fas fa-shield-alt"></i> <span id="proxy-status-text">Mengecek status...</span>
           </div>
-          
+
           <div id="copy-proxy-section" class="hidden" style="margin-top: 12px;">
             <button class="btn-primary" id="btn-copy-proxy" style="width: 100%;">
               <i class="fas fa-copy"></i> Copy Proxy URL (Untuk Chrome Extension)
             </button>
             <p class="hint-text hint-small" style="margin-top: 8px;">
-              💡 Install <strong>Proxy SwitchyOmega</strong> atau <strong>FoxyProxy</strong> di Chrome, lalu paste proxy URL ini di extension.
+              💡 Install salah satu extension Chrome berikut, lalu paste proxy URL ini:
             </p>
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+              <a href="https://chromewebstore.google.com/detail/urban-vpn-proxy/eppiocemhmnlbhjplcgkofciiegomcon" target="_blank" class="btn-ext-link">
+                <i class="fas fa-shield-alt"></i> Urban VPN
+              </a>
+              <a href="https://chromewebstore.google.com/detail/proxy-switchyomega/padekgcemlokbadohgkifijomclgjgif" target="_blank" class="btn-ext-link">
+                <i class="fas fa-exchange-alt"></i> Proxy SwitchyOmega
+              </a>
+              <a href="https://chromewebstore.google.com/detail/foxyproxy-standard/gcknhkkoolaabfmlnjonogaaifnjlfnp" target="_blank" class="btn-ext-link">
+                <i class="fas fa-fox"></i> FoxyProxy
+              </a>
+            </div>
           </div>
-          
+
           <div style="margin-top: 12px;">
             <button class="btn-secondary" id="btn-check-ip" style="width: 100%;">
               <i class="fas fa-map-marker-alt"></i> Check IP via Proxy
             </button>
-            <div id="ip-check-result" class="hidden" style="margin-top: 8px; padding: 12px; background: var(--primary-light); border-radius: var(--radius-sm); border: 1px solid var(--primary); font-size: 13px; font-weight: 600; color: var(--primary); text-align: center;">
+            <div id="ip-check-result" class="hidden"
+              style="margin-top: 8px; padding: 12px; background: var(--primary-light); border-radius: var(--radius-sm); border: 1px solid var(--primary); font-size: 13px; font-weight: 600; color: var(--primary); text-align: center;">
               <i class="fas fa-globe"></i> <span id="ip-check-text">Loading...</span>
             </div>
           </div>
@@ -585,7 +622,8 @@
           <div class="proxy-input-row">
             <input type="text" id="proxy-url-input" placeholder="http://ip:port" class="input-main">
             <button class="btn-primary" id="btn-save-proxy" style="width: auto; padding: 0 16px;">Set</button>
-            <button class="btn-danger" id="btn-clear-proxy" style="width: auto; padding: 0 16px;" title="Matikan Proxy"><i class="fas fa-power-off"></i></button>
+            <button class="btn-danger" id="btn-clear-proxy" style="width: auto; padding: 0 16px;"
+              title="Matikan Proxy"><i class="fas fa-power-off"></i></button>
           </div>
           <p class="hint-text hint-small">Format: http://ip:port atau https://ip:port</p>
 
@@ -595,8 +633,9 @@
             <button class="btn-secondary" id="btn-fetch-proxies" style="margin-top: 8px;">
               <i class="fas fa-download"></i> Fetch Free Proxies
             </button>
-            
-            <div id="proxy-list-container" class="proxy-list-container hidden" style="margin-top: 12px; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+
+            <div id="proxy-list-container" class="proxy-list-container hidden"
+              style="margin-top: 12px; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
               <table class="proxy-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
                 <thead style="background: var(--bg); position: sticky; top: 0;">
                   <tr>
@@ -615,29 +654,11 @@
       </div>
     </div>
 
-    <!-- ==================== IN-APP BROWSER MODAL ==================== -->
-    <div class="modal hidden" id="browser-modal" style="z-index: 2000;">
-      <div class="modal-content" style="width: 95%; max-width: 1200px; height: 90vh; display: flex; flex-direction: column; padding: 0;">
-        <div class="modal-header" style="padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg); border-radius: var(--radius) var(--radius) 0 0;">
-          <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
-            <i class="fas fa-globe" style="color: var(--primary);"></i>
-            <input type="text" id="browser-url" class="input-main" style="margin-bottom: 0; padding: 6px 12px; height: 32px;" placeholder="https://example.com" value="https://api.ipify.org?format=json">
-            <button class="btn-primary" id="btn-browser-go" style="width: auto; padding: 0 16px; height: 32px;">Go</button>
-          </div>
-          <button class="btn-close" id="btn-close-browser" style="margin-left: 16px;"><i class="fas fa-times"></i></button>
-        </div>
-        <div style="flex: 1; background: #fff; position: relative;">
-          <iframe id="browser-iframe" style="width: 100%; height: 100%; border: none;" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"></iframe>
-          <div id="browser-loading" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px;">
-            <i class="fas fa-spinner fa-spin" style="font-size: 32px; color: var(--primary);"></i>
-            <span style="font-weight: 500;">Memuat halaman via Proxy...</span>
-          </div>
-        </div>
-      </div>
-    </div>
+
 
   </div>
 
   <script src="/js/app.js"></script>
 </body>
+
 </html>

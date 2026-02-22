@@ -13,6 +13,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ==================== PROXY CONFIG ====================
 let activeProxy = null; // e.g., 'http://ip:port'
 
+
 // ==================== TEMP EMAIL API PROVIDERS ====================
 const PROVIDERS = [
   { name: 'mail.tm', base: 'https://api.mail.tm' },
@@ -53,7 +54,7 @@ const cfSubdomains = [];
 async function fetchWithTimeout(url, opts = {}, timeout = 10000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
-  
+
   // Add proxy agent if active
   if (activeProxy) {
     opts.agent = new HttpsProxyAgent(activeProxy);
@@ -818,8 +819,8 @@ app.post('/api/cloudflare/subdomains/:name/verify', async (req, res) => {
       const from = (m.from?.address || '').toLowerCase();
       const subject = (m.subject || '').toLowerCase();
       return from.includes('cloudflare') || from.includes('noreply') ||
-             subject.includes('verif') || subject.includes('confirm') ||
-             subject.includes('email routing') || subject.includes('destination');
+        subject.includes('verif') || subject.includes('confirm') ||
+        subject.includes('email routing') || subject.includes('destination');
     });
 
     if (cfMessage) {
@@ -909,19 +910,19 @@ app.delete('/api/cloudflare/subdomains/:name', async (req, res) => {
   const sub = cfSubdomains[idx];
   try {
     for (const rid of (sub.mxRecordIds || [])) {
-      await cfAPI('DELETE', `/zones/${cfConfig.zoneId}/dns_records/${rid}`).catch(() => {});
+      await cfAPI('DELETE', `/zones/${cfConfig.zoneId}/dns_records/${rid}`).catch(() => { });
     }
     if (sub.routeRuleId) {
-      await cfAPI('DELETE', `/zones/${cfConfig.zoneId}/email/routing/rules/${sub.routeRuleId}`).catch(() => {});
+      await cfAPI('DELETE', `/zones/${cfConfig.zoneId}/email/routing/rules/${sub.routeRuleId}`).catch(() => { });
     }
     if (sub.catchAllEmail) {
       try {
         await fetchWithTimeout(`${sub.catchAllEmail.providerBase}/accounts/${sub.catchAllEmail.accountId}`, {
           method: 'DELETE', headers: { 'Authorization': `Bearer ${sub.catchAllEmail.token}` }
         });
-      } catch {}
+      } catch { }
     }
-  } catch {}
+  } catch { }
 
   // Also remove any emails on this subdomain
   for (let i = createdEmails.length - 1; i >= 0; i--) {
@@ -1071,12 +1072,12 @@ app.post('/api/proxy/set', (req, res) => {
     activeProxy = null;
     return res.json({ success: true, message: 'Proxy dinonaktifkan' });
   }
-  
+
   // Basic validation
   if (!proxyUrl.startsWith('http://') && !proxyUrl.startsWith('https://')) {
     return res.status(400).json({ success: false, message: 'Format proxy tidak valid (harus http:// atau https://)' });
   }
-  
+
   activeProxy = proxyUrl;
   res.json({ success: true, message: `Proxy diatur ke ${proxyUrl}` });
 });
@@ -1085,17 +1086,17 @@ app.post('/api/proxy/set', (req, res) => {
 app.get('/api/proxy/check-ip', async (req, res) => {
   try {
     const opts = { timeout: 10000 };
-    
+
     if (activeProxy) {
       opts.agent = new HttpsProxyAgent(activeProxy);
     }
-    
+
     // Use ipify API to get IP
     const ipRes = await fetch('https://api.ipify.org?format=json', opts);
     if (!ipRes.ok) throw new Error(`HTTP ${ipRes.status}`);
-    
+
     const data = await ipRes.json();
-    
+
     res.json({
       success: true,
       ip: data.ip,
@@ -1111,192 +1112,10 @@ app.get('/api/proxy/check-ip', async (req, res) => {
   }
 });
 
-// Web proxy for browsing (fetch any URL via proxy)
-// Helper: fetch a URL through proxy and return content
-async function proxyFetchUrl(targetUrl, method = 'GET', body = null, extraHeaders = {}) {
-  const opts = {
-    method,
-    timeout: 15000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': '*/*',
-      'Accept-Encoding': 'gzip, deflate, br',
-      ...extraHeaders
-    }
-  };
-  if (body) opts.body = body;
-  if (activeProxy) {
-    opts.agent = new HttpsProxyAgent(activeProxy);
-  }
-  return await fetch(targetUrl, opts);
-}
-
-// Helper: rewrite HTML so all absolute/relative asset URLs route through our proxy
-function rewriteProxiedHtml(html, originalUrl) {
-  const origin = new URL(originalUrl).origin;
-  const base = origin;
-
-  // Inject <base> tag and a script that intercepts dynamic imports + XHR + fetch
-  const injectedScript = `
-<base href="${base}/">
-<script>
-(function() {
-  var _base = '${base}';
-  // Use absolute URL so <base> tag doesn't redirect proxy calls to klingai.com
-  var _proxyBase = window.location.origin + '/api/proxy/fetch?url=';
-
-  // Override fetch to route through backend proxy
-  var _origFetch = window.fetch;
-  window.fetch = function(input, init) {
-    var url = typeof input === 'string' ? input : (input && input.url ? input.url : String(input));
-    if (url && !url.startsWith('/api/') && !url.startsWith('http://localhost') && !url.startsWith('https://localhost')) {
-      if (url.startsWith('//')) url = 'https:' + url;
-      if (url.startsWith('/')) url = _base + url;
-      if (url.startsWith('http') && !url.startsWith(window.location.origin)) {
-        return _origFetch.call(this, _proxyBase + encodeURIComponent(url), init);
-      }
-    }
-    return _origFetch.apply(this, arguments);
-  };
-
-  // Override XMLHttpRequest
-  var _origOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url) {
-    if (url && typeof url === 'string') {
-      if (url.startsWith('//')) url = 'https:' + url;
-      if (url.startsWith('/') && !url.startsWith('/api/')) url = _base + url;
-      if (url.startsWith('http') && !url.startsWith(window.location.origin) && !url.startsWith('http://localhost') && !url.startsWith('https://localhost')) {
-        url = _proxyBase + encodeURIComponent(url);
-      }
-    }
-    return _origOpen.apply(this, [method, url].concat(Array.prototype.slice.call(arguments, 2)));
-  };
-})();
-</script>`;
-
-  // Insert after <head> or at beginning if no head
-  if (html.includes('<head>')) {
-    html = html.replace('<head>', '<head>' + injectedScript);
-  } else if (html.includes('<head ')) {
-    html = html.replace(/<head[^>]*>/, (m) => m + injectedScript);
-  } else {
-    html = injectedScript + html;
-  }
-
-  // Rewrite src/href for scripts, images, links, etc. to absolute URLs
-  // This handles relative paths like src="/assets/main.js" → src="https://klingai.com/assets/main.js"
-  html = html.replace(/(src|href|action)="(\/[^"]*?)"/g, (match, attr, path) => {
-    if (path.startsWith('//')) return `${attr}="https:${path}"`;
-    return `${attr}="${base}${path}"`;
-  });
-
-  return html;
-}
-
-// Handle CORS preflight for proxy endpoint
-app.options('/api/proxy/fetch', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
-  res.sendStatus(204);
-});
-
-app.all('/api/proxy/fetch', async (req, res) => {
-  const targetUrl = req.query.url;
-  
-  if (!targetUrl) {
-    return res.status(400).json({ success: false, message: 'URL parameter required' });
-  }
-  
-  try {
-    // Forward the original method and body
-    const method = req.method === 'OPTIONS' ? 'GET' : req.method;
-    const reqBody = (method === 'POST' || method === 'PUT') ? req.body : null;
-    const bodyStr = reqBody ? (typeof reqBody === 'string' ? reqBody : JSON.stringify(reqBody)) : null;
-    const extraHeaders = {};
-    if (req.headers['content-type']) extraHeaders['Content-Type'] = req.headers['content-type'];
-
-    const response = await proxyFetchUrl(targetUrl, method, bodyStr, extraHeaders);
-    const contentType = response.headers.get('content-type') || 'text/html';
-    
-    // Remove security headers that would block the iframe
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('X-Proxied-By', activeProxy || 'Direct');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', '*');
-    res.removeHeader('X-Frame-Options');
-    res.removeHeader('Content-Security-Policy');
-
-    // For HTML, rewrite URLs so assets load from correct domain
-    if (contentType.includes('text/html')) {
-      const body = await response.text();
-      const rewritten = rewriteProxiedHtml(body, targetUrl);
-      return res.send(rewritten);
-    }
-
-    // For all other content, stream as buffer
-    const buffer = await response.arrayBuffer();
-    return res.send(Buffer.from(buffer));
-
-  } catch (err) {
-    console.error('Proxy fetch error:', err.message);
-    res.status(500).send(`
-      <html>
-        <head><title>Proxy Error</title></head>
-        <body style="font-family: sans-serif; padding: 20px;">
-          <h2>❌ Proxy Fetch Failed</h2>
-          <p><strong>Error:</strong> ${err.message}</p>
-          <p><strong>Target URL:</strong> ${targetUrl}</p>
-          <p><strong>Proxy:</strong> ${activeProxy || 'Direct (No Proxy)'}</p>
-        </body>
-      </html>
-    `);
-  }
-});
-
-// Transparent sub-resource proxy: intercept requests made BY proxied pages
-// When Kling AI's page tries to load /global/federation-core, intercept and forward
-app.use(async (req, res, next) => {
-  const referer = req.headers.referer || '';
-  // Check if request comes from a proxied page
-  const proxyMatch = referer.match(/\/api\/proxy\/fetch\?url=([^&\s]+)/);
-  if (!proxyMatch) return next();
-
-  // Don't intercept our own API routes
-  if (req.path.startsWith('/api/')) return next();
-
-  try {
-    const originalUrl = decodeURIComponent(proxyMatch[1]);
-    const originalOrigin = new URL(originalUrl).origin;
-    const targetPath = req.url; // includes query string
-    const targetUrl = originalOrigin + targetPath;
-
-    console.log(`[SubProxy] ${req.path} → ${targetUrl}`);
-
-    const response = await proxyFetchUrl(targetUrl);
-    const contentType = response.headers.get('content-type') || 'application/octet-stream';
-    
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', '*');
-    res.removeHeader('X-Frame-Options');
-
-    if (contentType.includes('text/html')) {
-      const body = await response.text();
-      return res.send(rewriteProxiedHtml(body, targetUrl));
-    }
-
-    const buffer = await response.arrayBuffer();
-    return res.send(Buffer.from(buffer));
-  } catch (err) {
-    console.error('[SubProxy] Error:', err.message);
-    next();
-  }
-});
 
 // Fallback to index.html for SPA
+
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

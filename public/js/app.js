@@ -82,7 +82,7 @@ function playNotificationSound() {
     const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
     audio.volume = 0.5;
     audio.play().catch(e => console.log('Audio play failed:', e));
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function showPushNotification(title, body) {
@@ -92,7 +92,7 @@ function showPushNotification(title, body) {
       body: body,
       icon: '/favicon.ico' // Fallback if no icon
     });
-  } catch (e) {}
+  } catch (e) { }
 }
 
 // ==================== API HELPERS ====================
@@ -373,7 +373,7 @@ async function createEmail() {
       updateEmailPreview();
       await loadEmails();
       updateMailboxEmailSelect();
-      
+
       // Auto-select the new email and go to mailbox
       state.selectedEmailId = data.email.id;
       $('#mailbox-email-select').value = data.email.id;
@@ -426,7 +426,7 @@ async function createRandomEmail() {
       showToast(`Email ${data.email.address} berhasil dibuat!`, 'success');
       await loadEmails();
       updateMailboxEmailSelect();
-      
+
       // Auto-select the new email and go to mailbox
       state.selectedEmailId = data.email.id;
       $('#mailbox-email-select').value = data.email.id;
@@ -447,7 +447,7 @@ async function createRandomEmail() {
 
 async function deleteEmail(id) {
   if (!confirm('Yakin ingin menghapus email ini?')) return;
-  
+
   const data = await api('DELETE', `/api/emails/${id}`);
   if (data.success) {
     showToast('Email dihapus', 'success');
@@ -517,7 +517,7 @@ function showSelectedEmailInfo() {
   const info = $('#selected-email-info');
   info.style.display = 'block';
   $('#mailbox-address-text').textContent = email.address;
-  
+
   // Show quick signup section
   const quickSignup = $('#quick-signup-section');
   if (quickSignup) quickSignup.style.display = 'block';
@@ -525,7 +525,7 @@ function showSelectedEmailInfo() {
 
 function hideSelectedEmailInfo() {
   $('#selected-email-info').style.display = 'none';
-  
+
   // Hide quick signup section
   const quickSignup = $('#quick-signup-section');
   if (quickSignup) quickSignup.style.display = 'none';
@@ -583,8 +583,8 @@ function renderMessages(messages) {
 
   container.innerHTML = messages.map(m => {
     const date = m.date ? new Date(m.date) : new Date();
-    const timeStr = date.toLocaleString('id-ID', { 
-      hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' 
+    const timeStr = date.toLocaleString('id-ID', {
+      hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short'
     });
     const fromName = m.from.split('@')[0] || m.from;
 
@@ -975,10 +975,10 @@ function updateProxyUI() {
   const statusText = $('#proxy-status-text');
   const input = $('#proxy-url-input');
   const copySection = $('#copy-proxy-section');
-  
+
   // Only update if elements exist (modal is open or has been opened)
   if (!statusBox || !input) return;
-  
+
   if (state.activeProxy) {
     statusBox.className = 'proxy-status-box active';
     statusBox.innerHTML = `<i class="fas fa-shield-alt"></i> <span id="proxy-status-text">Aktif: ${state.activeProxy}</span>`;
@@ -998,11 +998,11 @@ async function saveProxy() {
     showToast('Format proxy harus http:// atau https://', 'error');
     return;
   }
-  
+
   const btn = $('#btn-save-proxy');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-  
+
   const data = await api('POST', '/api/proxy/set', { proxyUrl: url || null });
   if (data.success) {
     showToast(data.message, 'success');
@@ -1010,7 +1010,7 @@ async function saveProxy() {
   } else {
     showToast(data.message || 'Gagal mengatur proxy', 'error');
   }
-  
+
   btn.disabled = false;
   btn.innerHTML = 'Set';
 }
@@ -1027,25 +1027,25 @@ async function fetchFreeProxies() {
   const btn = $('#btn-fetch-proxies');
   const container = $('#proxy-list-container');
   const tbody = $('#proxy-list-body');
-  
+
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengambil...';
-  
+
   try {
     // Fetch from proxifly raw list
     const res = await fetch('https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/http/data.txt');
     if (!res.ok) throw new Error('Gagal mengambil proxy');
-    
+
     const text = await res.text();
     const lines = text.split('\n').filter(l => l.trim().length > 0).slice(0, 50); // Ambil 50 teratas
-    
+
     if (lines.length === 0) throw new Error('Daftar proxy kosong');
-    
+
     tbody.innerHTML = lines.map(line => {
       // Format: ip:port or http://ip:port
       const trimmed = line.trim();
-      const proxyUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://') 
-        ? trimmed 
+      const proxyUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://')
+        ? trimmed
         : `http://${trimmed}`;
       const displayText = trimmed.replace(/^https?:\/\//, ''); // Remove protocol for display
       return `
@@ -1058,17 +1058,17 @@ async function fetchFreeProxies() {
         </tr>
       `;
     }).join('');
-    
+
     container.classList.remove('hidden');
   } catch (err) {
     showToast(err.message, 'error');
   }
-  
+
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-download"></i> Fetch Free Proxies';
 }
 
-window.useProxy = function(url) {
+window.useProxy = function (url) {
   $('#proxy-url-input').value = url;
   saveProxy();
 };
@@ -1078,16 +1078,16 @@ function copyProxyUrl() {
     showToast('Tidak ada proxy aktif', 'error');
     return;
   }
-  
+
   // Parse proxy URL to extract IP and port
   try {
     const proxyUrl = state.activeProxy;
     const match = proxyUrl.match(/^(https?:\/\/)(.+):(\d+)$/);
-    
+
     if (match) {
       const [, protocol, ip, port] = match;
       const copyText = `Protocol: ${protocol.replace('://', '').toUpperCase()}\nServer: ${ip}\nPort: ${port}\n\nFull URL: ${proxyUrl}`;
-      
+
       navigator.clipboard.writeText(copyText).then(() => {
         showToast('✓ Proxy URL berhasil di-copy!', 'success');
       }).catch(() => {
@@ -1109,21 +1109,20 @@ function copyProxyUrl() {
 
 function quickSignup(platform, url) {
   const selectedEmail = $('#mailbox-email-select').value;
-  
+
   if (!selectedEmail) {
     showToast('Pilih email terlebih dahulu', 'error');
     return;
   }
-  
-  // Get email address from state
+
   const emailData = state.emails.find(e => e.id === selectedEmail);
   if (!emailData) {
     showToast('Email tidak ditemukan', 'error');
     return;
   }
-  
+
   const emailAddress = emailData.address;
-  
+
   // Handle custom URL
   if (url === 'custom') {
     const customUrl = prompt('Masukkan URL signup page:', 'https://');
@@ -1133,28 +1132,14 @@ function quickSignup(platform, url) {
     }
     url = customUrl;
   }
-  
-  // Copy email to clipboard
+
+  // Copy email to clipboard and open URL in new tab
   navigator.clipboard.writeText(emailAddress).then(() => {
-    showToast(`✓ Email ${emailAddress} ter-copy!`, 'success');
-    
-    // Open URL in In-App Browser
-    $('#browser-url').value = url;
-    $('#browser-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    
-    // Load the URL
-    setTimeout(() => {
-      loadBrowserUrl();
-      showToast(`📧 Paste email yang sudah ter-copy di form ${platform}`, 'info');
-    }, 300);
+    showToast(`✓ Email ${emailAddress} ter-copy! Paste di form ${platform}`, 'success');
+    window.open(url, '_blank');
   }).catch(() => {
-    // Fallback if clipboard fails
     showToast(`Email: ${emailAddress} (Copy manual)`, 'info');
-    $('#browser-url').value = url;
-    $('#browser-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    setTimeout(() => loadBrowserUrl(), 300);
+    window.open(url, '_blank');
   });
 }
 
@@ -1162,12 +1147,12 @@ async function checkIpViaProxy() {
   const btn = $('#btn-check-ip');
   const resultBox = $('#ip-check-result');
   const resultText = $('#ip-check-text');
-  
+
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
   resultBox.classList.remove('hidden');
   resultText.textContent = 'Checking...';
-  
+
   try {
     const data = await api('GET', '/api/proxy/check-ip');
     if (data.success) {
@@ -1182,45 +1167,12 @@ async function checkIpViaProxy() {
     resultBox.style.borderColor = 'var(--danger)';
     resultBox.style.color = 'var(--danger)';
   }
-  
+
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-map-marker-alt"></i> Check IP via Proxy';
 }
 
-// ==================== IN-APP BROWSER ====================
-function openBrowser() {
-  $('#browser-modal').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-}
 
-function closeBrowser() {
-  $('#browser-modal').classList.add('hidden');
-  document.body.style.overflow = '';
-  $('#browser-iframe').src = 'about:blank';
-}
-
-function loadBrowserUrl() {
-  let url = $('#browser-url').value.trim();
-  if (!url) return;
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = 'https://' + url;
-    $('#browser-url').value = url;
-  }
-  
-  const iframe = $('#browser-iframe');
-  const loading = $('#browser-loading');
-  
-  loading.classList.remove('hidden');
-  
-  // Use backend proxy endpoint to fetch the URL via proxy
-  // This way, the request goes through our backend which uses the configured proxy
-  const proxyUrl = `/api/proxy/fetch?url=${encodeURIComponent(url)}`;
-  iframe.src = proxyUrl;
-  
-  iframe.onload = () => {
-    loading.classList.add('hidden');
-  };
-}
 
 // ==================== EVENT LISTENERS ====================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1301,15 +1253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // In-App Browser
-  $('#btn-browser-go').addEventListener('click', loadBrowserUrl);
-  $('#btn-close-browser').addEventListener('click', closeBrowser);
-  $('#browser-url').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') loadBrowserUrl();
-  });
-  $('#browser-modal').addEventListener('click', (e) => {
-    if (e.target === $('#browser-modal')) closeBrowser();
-  });
+
 
   // Guide toggle
   $('#btn-toggle-guide').addEventListener('click', toggleGuide);

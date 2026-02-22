@@ -2087,6 +2087,28 @@ html, body {
   transform: none;
 }
 
+/* Extension Link Buttons */
+.btn-ext-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--primary-light);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-ext-link:hover {
+  background: var(--primary);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
 /* Quick Signup Buttons */
 .quick-signup-section {
   margin-top: 16px;
