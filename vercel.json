@@ -12,12 +12,24 @@
   ],
   "routes": [
     {
+      "src": "/api/proxy/status",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/api/proxy/set",
+      "dest": "/server.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server.js"
     },
     {
-      "src": "/(.*)",
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf))",
       "dest": "/public/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/index.html"
     }
   ]
 }
