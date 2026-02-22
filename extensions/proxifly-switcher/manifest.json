@@ -9,6 +9,7 @@
   ],
   "host_permissions": [
     "https://cdn.jsdelivr.net/*",
+    "https://vwmhbpgwhfwuwtattset.supabase.co/*",
     "https://api.ipify.org/*",
     "https://api64.ipify.org/*"
   ],

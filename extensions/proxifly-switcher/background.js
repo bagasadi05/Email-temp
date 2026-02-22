@@ -1,5 +1,12 @@
 const PROXIFLY_JSON_URL =
   "https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/all/data.json";
+const PROXYHUB_SUPABASE_URL = "https://vwmhbpgwhfwuwtattset.supabase.co";
+const PROXYHUB_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3bWhicGd3aGZ3dXd0YXR0c2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjc0NjYsImV4cCI6MjA4MjkwMzQ2Nn0.LSMD2P4whDzoIW4UCig0ly0j6UOxd5fHhIkUhywnmrg";
+const PROXYHUB_FETCH_PROXIES_URL = `${PROXYHUB_SUPABASE_URL}/functions/v1/fetch-proxies`;
+const PROXYHUB_GEOLOCATE_IPS_URL = `${PROXYHUB_SUPABASE_URL}/functions/v1/geolocate-ips`;
+const PROXYHUB_FETCH_LIMIT = 500;
+const PROXYHUB_GEOLOCATE_LIMIT = 200;
 const PREFERRED_COUNTRIES = ["US", "GB", "FR"];
 const PREFERRED_COUNTRY_SET = new Set([...PREFERRED_COUNTRIES, "UK"]);
 const SMART_SWITCH_MAX_ATTEMPTS = 15;
@@ -124,6 +131,7 @@ function normalizeProxyEntry(entry) {
   return {
     id: `${scheme}://${parsed.hostname}:${port}`,
     url: `${scheme}://${parsed.hostname}:${port}`,
+    source: String(entry.source || "unknown"),
     scheme,
     host: parsed.hostname,
     port,
@@ -147,6 +155,37 @@ function sortProxyList(list) {
     }
     return a.id.localeCompare(b.id);
   });
+}
+
+function dedupeProxyList(list) {
+  const map = new Map();
+
+  for (const proxy of list) {
+    if (!proxy?.id) continue;
+    const existing = map.get(proxy.id);
+    if (!existing) {
+      map.set(proxy.id, proxy);
+      continue;
+    }
+
+    const existingCountryKnown = !["ZZ", "XX", ""].includes(normalizeCountryCode(existing.country));
+    const nextCountryKnown = !["ZZ", "XX", ""].includes(normalizeCountryCode(proxy.country));
+
+    if (nextCountryKnown && !existingCountryKnown) {
+      map.set(proxy.id, proxy);
+      continue;
+    }
+
+    if (
+      proxy.score > existing.score ||
+      (proxy.score === existing.score &&
+        Number(proxy.supportsHttps) > Number(existing.supportsHttps))
+    ) {
+      map.set(proxy.id, proxy);
+    }
+  }
+
+  return [...map.values()];
 }
 
 function filterPreferredCountryList(list) {
@@ -175,6 +214,32 @@ function chooseUsableCandidates(list, protocol) {
 }
 
 async function fetchProxyListFromSource() {
+  const sources = await Promise.allSettled([
+    fetchProxiflyProxyList(),
+    fetchProxyhubProxyList(),
+  ]);
+
+  const merged = [];
+  const errors = [];
+
+  for (const result of sources) {
+    if (result.status === "fulfilled") {
+      merged.push(...result.value);
+      continue;
+    }
+
+    errors.push(result.reason?.message || String(result.reason));
+  }
+
+  const deduped = dedupeProxyList(merged);
+  if (!deduped.length) {
+    throw new Error(`Semua sumber proxy gagal: ${errors.join(" | ") || "unknown error"}`);
+  }
+
+  return sortProxyList(deduped);
+}
+
+async function fetchProxiflyProxyList() {
   const response = await fetch(PROXIFLY_JSON_URL, {
     headers: {
       Accept: "application/json",
@@ -191,11 +256,137 @@ async function fetchProxyListFromSource() {
     throw new Error("Format data proxifly tidak valid");
   }
 
-  const normalized = data.map(normalizeProxyEntry).filter(Boolean);
+  const normalized = data
+    .map((entry) => normalizeProxyEntry({ ...entry, source: "proxifly" }))
+    .filter(Boolean);
   if (!normalized.length) {
     throw new Error("Tidak ada proxy valid dari proxifly");
   }
 
+  return sortProxyList(normalized);
+}
+
+function proxyhubTypeToScheme(type) {
+  const value = String(type || "").toUpperCase();
+  if (value === "HTTP" || value === "HTTPS") return "http";
+  if (value === "SOCKS4") return "socks4";
+  if (value === "SOCKS5") return "socks5";
+  return "";
+}
+
+function normalizeProxyhubEntry(entry) {
+  if (!entry?.ip || !entry?.port) return null;
+  if (String(entry.status || "").toLowerCase() !== "online") return null;
+
+  const scheme = proxyhubTypeToScheme(entry.type || entry.protocol);
+  if (!scheme) return null;
+
+  const supportsHttps =
+    /https/i.test(String(entry.protocol || "")) || String(entry.type || "").toUpperCase() === "HTTPS";
+  const countryCode = normalizeCountryCode(entry.countryCode || "XX");
+  const countryName = String(entry.country || "Unknown");
+  const qualityScore = Number(entry.qualityScore);
+  const responseTime = Number(entry.responseTime);
+  const scoreBase = Number.isFinite(qualityScore)
+    ? qualityScore
+    : Number.isFinite(responseTime)
+      ? Math.max(1, 10000 - responseTime)
+      : 0;
+
+  return normalizeProxyEntry({
+    source: "proxyhub",
+    proxy: `${scheme}://${entry.ip}:${entry.port}`,
+    port: entry.port,
+    protocol: scheme,
+    https: supportsHttps,
+    anonymity: String(entry.anonymity || "unknown").toLowerCase(),
+    score: scoreBase,
+    geolocation: {
+      country: countryCode || "XX",
+      city: countryName || "Unknown",
+    },
+  });
+}
+
+async function callProxyhubFunction(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      apikey: PROXYHUB_ANON_KEY,
+      Authorization: `Bearer ${PROXYHUB_ANON_KEY}`,
+    },
+    cache: "no-store",
+    body: JSON.stringify(body || {}),
+  });
+
+  if (!response.ok) {
+    throw new Error(`ProxyHub request gagal (${response.status})`);
+  }
+
+  return await response.json();
+}
+
+async function enrichProxyhubGeolocation(list) {
+  const unknownIps = [...new Set(
+    list
+      .filter((item) => ["ZZ", "XX", ""].includes(normalizeCountryCode(item.country)))
+      .map((item) => item.host)
+      .filter(Boolean)
+  )].slice(0, PROXYHUB_GEOLOCATE_LIMIT);
+
+  if (!unknownIps.length) {
+    return list;
+  }
+
+  try {
+    const data = await callProxyhubFunction(PROXYHUB_GEOLOCATE_IPS_URL, { ips: unknownIps });
+    if (!data?.success || !Array.isArray(data.results)) {
+      return list;
+    }
+
+    const geoMap = new Map(
+      data.results
+        .filter((row) => row?.ip)
+        .map((row) => [
+          String(row.ip),
+          {
+            country: normalizeCountryCode(row.countryCode || "XX"),
+            city: String(row.country || "Unknown"),
+          },
+        ])
+    );
+
+    return list.map((item) => {
+      const geo = geoMap.get(item.host);
+      if (!geo) return item;
+      return {
+        ...item,
+        country: geo.country || item.country,
+        city: geo.city || item.city,
+      };
+    });
+  } catch {
+    return list;
+  }
+}
+
+async function fetchProxyhubProxyList() {
+  const data = await callProxyhubFunction(PROXYHUB_FETCH_PROXIES_URL, {
+    limit: PROXYHUB_FETCH_LIMIT,
+  });
+
+  if (!data?.success || !Array.isArray(data.proxies)) {
+    throw new Error(`Format data ProxyHub tidak valid`);
+  }
+
+  let normalized = data.proxies.map(normalizeProxyhubEntry).filter(Boolean);
+  if (!normalized.length) {
+    throw new Error("Tidak ada proxy valid dari ProxyHub");
+  }
+
+  normalized = await enrichProxyhubGeolocation(normalized);
   return sortProxyList(normalized);
 }
 
