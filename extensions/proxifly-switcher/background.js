@@ -9,12 +9,16 @@ const PROXYHUB_FETCH_LIMIT = 500;
 const PROXYHUB_GEOLOCATE_LIMIT = 200;
 const PREFERRED_COUNTRIES = ["US", "GB", "FR"];
 const PREFERRED_COUNTRY_SET = new Set([...PREFERRED_COUNTRIES, "UK"]);
-const SMART_SWITCH_MAX_ATTEMPTS = 15;
+const SMART_SWITCH_MAX_ATTEMPTS = 20;
+const SMART_SWITCH_BROWSER_TEST_URL = "https://ip8.com";
+const FAILED_PROXY_BLACKLIST_TTL_MS = 15 * 60 * 1000;
+const FAILED_PROXY_BLACKLIST_MAX_ENTRIES = 500;
 
 const STORAGE_KEYS = {
   proxyCache: "proxyCache",
   cacheUpdatedAt: "cacheUpdatedAt",
   activeProxy: "activeProxy",
+  failedProxyBlacklist: "failedProxyBlacklist",
   uiProtocol: "uiProtocol",
   uiLimit: "uiLimit",
   nextIndexByProtocol: "nextIndexByProtocol",
@@ -23,6 +27,7 @@ const STORAGE_KEYS = {
 const DEFAULTS = {
   [STORAGE_KEYS.uiProtocol]: "all",
   [STORAGE_KEYS.uiLimit]: 50,
+  [STORAGE_KEYS.failedProxyBlacklist]: {},
   [STORAGE_KEYS.nextIndexByProtocol]: {},
 };
 
@@ -36,6 +41,110 @@ function storageSet(value) {
   return new Promise((resolve) => {
     chrome.storage.local.set(value, () => resolve());
   });
+}
+
+function tabsQuery(queryInfo) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query(queryInfo, (tabs) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(tabs || []);
+    });
+  });
+}
+
+function tabsReload(tabId) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.reload(tabId, {}, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+function pruneFailedProxyBlacklist(raw, now = Date.now()) {
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+
+  const rows = Object.entries(raw)
+    .filter(([id, item]) => {
+      if (!id || !item || typeof item !== "object") return false;
+      return Number(item.until || 0) > now;
+    })
+    .sort((a, b) => Number(b[1].failedAt || 0) - Number(a[1].failedAt || 0))
+    .slice(0, FAILED_PROXY_BLACKLIST_MAX_ENTRIES);
+
+  return Object.fromEntries(rows);
+}
+
+async function getFailedProxyBlacklist({ persistPruned = true } = {}) {
+  const stored = await storageGet([STORAGE_KEYS.failedProxyBlacklist]);
+  const raw = stored[STORAGE_KEYS.failedProxyBlacklist] || {};
+  const pruned = pruneFailedProxyBlacklist(raw);
+
+  if (persistPruned && JSON.stringify(raw) !== JSON.stringify(pruned)) {
+    await storageSet({ [STORAGE_KEYS.failedProxyBlacklist]: pruned });
+  }
+
+  return pruned;
+}
+
+function splitBlacklistedProxies(list, blacklistMap) {
+  const map = blacklistMap && typeof blacklistMap === "object" ? blacklistMap : {};
+  const allowed = [];
+  const blocked = [];
+
+  for (const proxy of list) {
+    if (!proxy?.id) continue;
+    if (map[proxy.id]) {
+      blocked.push(proxy);
+      continue;
+    }
+    allowed.push(proxy);
+  }
+
+  return { allowed, blocked };
+}
+
+async function markProxyAsFailed(proxy, reason) {
+  if (!proxy?.id) return;
+
+  const now = Date.now();
+  const blacklist = await getFailedProxyBlacklist({ persistPruned: true });
+  const existing = blacklist[proxy.id] || {};
+
+  blacklist[proxy.id] = {
+    id: proxy.id,
+    url: proxy.url || proxy.id,
+    host: proxy.host || "",
+    port: Number(proxy.port || 0),
+    scheme: proxy.scheme || "",
+    country: proxy.country || "",
+    source: proxy.source || "",
+    reason: String(reason || "failed"),
+    failedAt: now,
+    until: now + FAILED_PROXY_BLACKLIST_TTL_MS,
+    count: Number(existing.count || 0) + 1,
+  };
+
+  const pruned = pruneFailedProxyBlacklist(blacklist, now);
+  await storageSet({ [STORAGE_KEYS.failedProxyBlacklist]: pruned });
+}
+
+async function clearProxyFailureMark(proxyId) {
+  if (!proxyId) return;
+
+  const blacklist = await getFailedProxyBlacklist({ persistPruned: true });
+  if (!blacklist[proxyId]) return;
+
+  delete blacklist[proxyId];
+  await storageSet({ [STORAGE_KEYS.failedProxyBlacklist]: blacklist });
 }
 
 function proxySettingsGet() {
@@ -533,12 +642,20 @@ async function chooseRandomProxy(protocol) {
     throw new Error("Tidak ada proxy US/GB/FR untuk filter ini");
   }
 
+  const blacklist = await getFailedProxyBlacklist();
+  const { allowed, blocked } = splitBlacklistedProxies(candidates, blacklist);
+  if (!allowed.length) {
+    throw new Error(
+      `Semua kandidat sedang masuk blacklist sementara (${blocked.length}). Tunggu 15 menit atau refresh daftar.`
+    );
+  }
+
   const stored = await storageGet([STORAGE_KEYS.activeProxy]);
   const currentId = stored[STORAGE_KEYS.activeProxy]?.id;
 
-  let chosen = candidates[Math.floor(Math.random() * candidates.length)];
-  if (candidates.length > 1 && chosen.id === currentId) {
-    chosen = candidates[(candidates.findIndex((p) => p.id === chosen.id) + 1) % candidates.length];
+  let chosen = allowed[Math.floor(Math.random() * allowed.length)];
+  if (allowed.length > 1 && chosen.id === currentId) {
+    chosen = allowed[(allowed.findIndex((p) => p.id === chosen.id) + 1) % allowed.length];
   }
 
   await applyProxy(chosen);
@@ -552,12 +669,20 @@ async function chooseNextProxy(protocol) {
     throw new Error("Tidak ada proxy US/GB/FR untuk filter ini");
   }
 
+  const blacklist = await getFailedProxyBlacklist();
+  const { allowed, blocked } = splitBlacklistedProxies(candidates, blacklist);
+  if (!allowed.length) {
+    throw new Error(
+      `Semua kandidat sedang masuk blacklist sementara (${blocked.length}). Tunggu 15 menit atau refresh daftar.`
+    );
+  }
+
   const prefs = await getUiPrefs();
   const indexMap = { ...(prefs.nextIndexByProtocol || {}) };
   const key = protocol || "all";
   const start = Number(indexMap[key] || 0);
-  const chosen = candidates[start % candidates.length];
-  indexMap[key] = (start + 1) % candidates.length;
+  const chosen = allowed[start % allowed.length];
+  indexMap[key] = (start + 1) % allowed.length;
 
   await applyProxy(chosen);
   await storageSet({ [STORAGE_KEYS.nextIndexByProtocol]: indexMap });
@@ -595,6 +720,51 @@ async function checkPublicIp({ timeoutMs = 8000 } = {}) {
   }
 }
 
+async function checkHttpsPage(
+  url,
+  { timeoutMs = 6000, expectedHost = null, expectedStatus = [200] } = {}
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      cache: "no-store",
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      redirect: "follow",
+    });
+
+    if (!response.ok || !expectedStatus.includes(response.status)) {
+      throw new Error(`HTTPS test gagal (${response.status})`);
+    }
+
+    const finalUrl = response.url || url;
+    const finalHost = (() => {
+      try {
+        return new URL(finalUrl).hostname.toLowerCase();
+      } catch {
+        return null;
+      }
+    })();
+
+    if (expectedHost && finalHost !== String(expectedHost).toLowerCase()) {
+      throw new Error(`HTTPS test redirect ke host lain (${finalHost || "unknown"})`);
+    }
+
+    return {
+      ok: true,
+      url,
+      finalUrl,
+      status: response.status,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function proxySnapshotFromSettings(details) {
   return {
     value: details?.value || null,
@@ -613,16 +783,50 @@ async function restoreProxySnapshot(snapshot) {
   await disableProxy();
 }
 
+async function reloadActiveBrowserTab() {
+  try {
+    const tabs = await tabsQuery({ active: true, lastFocusedWindow: true });
+    const targetTab = tabs.find((tab) => Number.isInteger(tab?.id));
+    if (!targetTab || !Number.isInteger(targetTab.id)) {
+      return { ok: false, reason: "no_active_tab" };
+    }
+
+    const url = String(targetTab.url || "");
+    if (
+      url.startsWith("chrome://") ||
+      url.startsWith("edge://") ||
+      url.startsWith("brave://") ||
+      url.startsWith("about:") ||
+      url.startsWith("chrome-extension://")
+    ) {
+      return { ok: false, reason: "unsupported_tab" };
+    }
+
+    await tabsReload(targetTab.id);
+    return { ok: true, tabId: targetTab.id };
+  } catch (error) {
+    return { ok: false, reason: error?.message || String(error) };
+  }
+}
+
 async function smartSwitchPreferredProxy(protocol) {
   const currentSettings = await proxySettingsGet();
   const snapshot = proxySnapshotFromSettings(currentSettings);
 
   const { list } = await getCachedProxyList();
   const usable = chooseUsableCandidates(list, protocol);
-  const candidates = usable.candidates.slice(0, SMART_SWITCH_MAX_ATTEMPTS);
+  const blacklist = await getFailedProxyBlacklist();
+  const split = splitBlacklistedProxies(usable.candidates, blacklist);
+  const candidates = split.allowed.slice(0, SMART_SWITCH_MAX_ATTEMPTS);
+
+  if (!usable.candidates.length) {
+    throw new Error("Tidak ada kandidat proxy US/GB/FR yang cocok");
+  }
 
   if (!candidates.length) {
-    throw new Error("Tidak ada kandidat proxy US/GB/FR yang cocok");
+    throw new Error(
+      `Semua kandidat US/GB/FR sedang diblacklist sementara (${split.blocked.length}). Tunggu 15 menit atau Refresh Daftar.`
+    );
   }
 
   const failures = [];
@@ -632,15 +836,26 @@ async function smartSwitchPreferredProxy(protocol) {
     try {
       await applyProxy(candidate);
       const ipCheck = await checkPublicIp({ timeoutMs: 6000 });
+      const browserCheck = await checkHttpsPage(SMART_SWITCH_BROWSER_TEST_URL, {
+        timeoutMs: 6000,
+        expectedHost: "ip8.com",
+        expectedStatus: [200],
+      });
+      await clearProxyFailureMark(candidate.id);
+      const autoReload = await reloadActiveBrowserTab();
 
       return {
         applied: candidate,
         ipCheck,
+        browserCheck,
+        autoReload,
         attempts: index + 1,
         attemptedCandidates: candidates.length,
         excludedNoTls: usable.excludedNoTls,
+        skippedBlacklisted: split.blocked.length,
       };
     } catch (error) {
+      await markProxyAsFailed(candidate, error?.message || String(error));
       failures.push({
         proxy: candidate.url,
         reason: error?.message || String(error),

@@ -208,7 +208,12 @@ async function onSmartPreferredSwitch() {
       `Proxy OK (${result.applied.country || "??"})`,
       result.applied.url,
       result.ipCheck?.ip ? `IP: ${result.ipCheck.ip}` : "",
+      result.browserCheck?.status ? `ip8:${result.browserCheck.status}` : "",
       Number.isFinite(result.attempts) ? `coba ${result.attempts}x` : "",
+      Number.isFinite(result.skippedBlacklisted) && result.skippedBlacklisted > 0
+        ? `skipBL:${result.skippedBlacklisted}`
+        : "",
+      result.autoReload?.ok ? "tab:auto-reload" : "",
     ]
       .filter(Boolean)
       .join(" | ");

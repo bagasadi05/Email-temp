@@ -6,7 +6,8 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(express.json({ strict: false }));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==================== PROXY CONFIG ====================
@@ -1112,15 +1113,18 @@ app.get('/api/proxy/check-ip', async (req, res) => {
 
 // Web proxy for browsing (fetch any URL via proxy)
 // Helper: fetch a URL through proxy and return content
-async function proxyFetchUrl(targetUrl) {
+async function proxyFetchUrl(targetUrl, method = 'GET', body = null, extraHeaders = {}) {
   const opts = {
+    method,
     timeout: 15000,
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept': '*/*',
       'Accept-Encoding': 'gzip, deflate, br',
+      ...extraHeaders
     }
   };
+  if (body) opts.body = body;
   if (activeProxy) {
     opts.agent = new HttpsProxyAgent(activeProxy);
   }
@@ -1138,7 +1142,8 @@ function rewriteProxiedHtml(html, originalUrl) {
 <script>
 (function() {
   var _base = '${base}';
-  var _proxyBase = '/api/proxy/fetch?url=';
+  // Use absolute URL so <base> tag doesn't redirect proxy calls to klingai.com
+  var _proxyBase = window.location.origin + '/api/proxy/fetch?url=';
 
   // Override fetch to route through backend proxy
   var _origFetch = window.fetch;
@@ -1188,7 +1193,15 @@ function rewriteProxiedHtml(html, originalUrl) {
   return html;
 }
 
-app.get('/api/proxy/fetch', async (req, res) => {
+// Handle CORS preflight for proxy endpoint
+app.options('/api/proxy/fetch', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.sendStatus(204);
+});
+
+app.all('/api/proxy/fetch', async (req, res) => {
   const targetUrl = req.query.url;
   
   if (!targetUrl) {
@@ -1196,31 +1209,34 @@ app.get('/api/proxy/fetch', async (req, res) => {
   }
   
   try {
-    const response = await proxyFetchUrl(targetUrl);
+    // Forward the original method and body
+    const method = req.method === 'OPTIONS' ? 'GET' : req.method;
+    const reqBody = (method === 'POST' || method === 'PUT') ? req.body : null;
+    const bodyStr = reqBody ? (typeof reqBody === 'string' ? reqBody : JSON.stringify(reqBody)) : null;
+    const extraHeaders = {};
+    if (req.headers['content-type']) extraHeaders['Content-Type'] = req.headers['content-type'];
+
+    const response = await proxyFetchUrl(targetUrl, method, bodyStr, extraHeaders);
     const contentType = response.headers.get('content-type') || 'text/html';
     
     // Remove security headers that would block the iframe
     res.setHeader('Content-Type', contentType);
     res.setHeader('X-Proxied-By', activeProxy || 'Direct');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');
 
-    const body = await response.text();
-    
     // For HTML, rewrite URLs so assets load from correct domain
     if (contentType.includes('text/html')) {
+      const body = await response.text();
       const rewritten = rewriteProxiedHtml(body, targetUrl);
       return res.send(rewritten);
     }
 
-    // For JS/CSS/other text, also rewrite relative references
-    if (contentType.includes('javascript') || contentType.includes('text/css')) {
-      return res.send(body);
-    }
-
-    // For binary content (images, fonts, etc.) send as buffer
-    const binaryResponse = await proxyFetchUrl(targetUrl);
-    const buffer = await binaryResponse.arrayBuffer();
+    // For all other content, stream as buffer
+    const buffer = await response.arrayBuffer();
     return res.send(Buffer.from(buffer));
 
   } catch (err) {
@@ -1262,6 +1278,9 @@ app.use(async (req, res, next) => {
     const contentType = response.headers.get('content-type') || 'application/octet-stream';
     
     res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
     res.removeHeader('X-Frame-Options');
 
     if (contentType.includes('text/html')) {
