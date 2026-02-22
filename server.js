@@ -1054,8 +1054,12 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Email Temp Server running at http://localhost:${PORT}`);
-  console.log(`📧 Using mail.tm & mail.gw APIs for REAL temporary emails`);
-  console.log(`☁️ Cloudflare Email Routing available for custom subdomains`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`✅ Email Temp Server running at http://localhost:${PORT}`);
+    console.log(`📧 Using mail.tm & mail.gw APIs for REAL temporary emails`);
+    console.log(`☁️ Cloudflare Email Routing available for custom subdomains`);
+  });
+}
+
+module.exports = app;
