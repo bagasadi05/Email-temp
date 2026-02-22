@@ -951,10 +951,14 @@ function selectCfSubdomain(name) {
 
 // ==================== PROXY SETTINGS ====================
 async function loadProxyStatus() {
-  const data = await api('GET', '/api/proxy/status');
-  if (data.success) {
-    state.activeProxy = data.activeProxy;
-    updateProxyUI();
+  try {
+    const data = await api('GET', '/api/proxy/status');
+    if (data.success) {
+      state.activeProxy = data.activeProxy;
+      updateProxyUI();
+    }
+  } catch (err) {
+    console.error('Failed to load proxy status:', err);
   }
 }
 
@@ -962,6 +966,9 @@ function updateProxyUI() {
   const statusBox = $('#proxy-status-box');
   const statusText = $('#proxy-status-text');
   const input = $('#proxy-url-input');
+  
+  // Only update if elements exist (modal is open or has been opened)
+  if (!statusBox || !input) return;
   
   if (state.activeProxy) {
     statusBox.className = 'proxy-status-box active';
@@ -1101,8 +1108,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadCfConfig();
   await loadCfSubdomains();
 
-  // Load Proxy status
-  await loadProxyStatus();
+  // Load Proxy status (non-blocking)
+  loadProxyStatus().catch(err => console.error('Proxy status load failed:', err));
 
   // Load any existing emails
   await loadEmails();
