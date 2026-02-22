@@ -14,7 +14,9 @@ const state = {
   // Cloudflare
   cfConfigured: false,
   cfBaseDomain: '',
-  cfSubdomains: []         // [{ name, fullDomain, verified, catchAllEmail, createdAt }]
+  cfSubdomains: [],        // [{ name, fullDomain, verified, catchAllEmail, createdAt }]
+  // Proxy
+  activeProxy: null
 };
 
 // ==================== DOM ELEMENTS ====================
@@ -947,6 +949,144 @@ function selectCfSubdomain(name) {
   setTimeout(() => navigateTo('email'), 400);
 }
 
+// ==================== PROXY SETTINGS ====================
+async function loadProxyStatus() {
+  const data = await api('GET', '/api/proxy/status');
+  if (data.success) {
+    state.activeProxy = data.activeProxy;
+    updateProxyUI();
+  }
+}
+
+function updateProxyUI() {
+  const statusBox = $('#proxy-status-box');
+  const statusText = $('#proxy-status-text');
+  const input = $('#proxy-url-input');
+  
+  if (state.activeProxy) {
+    statusBox.className = 'proxy-status-box active';
+    statusBox.innerHTML = `<i class="fas fa-shield-alt"></i> <span id="proxy-status-text">Aktif: ${state.activeProxy}</span>`;
+    input.value = state.activeProxy;
+  } else {
+    statusBox.className = 'proxy-status-box inactive';
+    statusBox.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span id="proxy-status-text">Tidak Aktif (Menggunakan IP Asli)</span>`;
+    input.value = '';
+  }
+}
+
+async function saveProxy() {
+  const url = $('#proxy-url-input').value.trim();
+  if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+    showToast('Format proxy harus http:// atau https://', 'error');
+    return;
+  }
+  
+  const btn = $('#btn-save-proxy');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  
+  const data = await api('POST', '/api/proxy/set', { proxyUrl: url || null });
+  if (data.success) {
+    showToast(data.message, 'success');
+    await loadProxyStatus();
+  } else {
+    showToast(data.message || 'Gagal mengatur proxy', 'error');
+  }
+  
+  btn.disabled = false;
+  btn.innerHTML = 'Set';
+}
+
+async function clearProxy() {
+  const data = await api('POST', '/api/proxy/set', { proxyUrl: null });
+  if (data.success) {
+    showToast('Proxy dinonaktifkan', 'success');
+    await loadProxyStatus();
+  }
+}
+
+async function fetchFreeProxies() {
+  const btn = $('#btn-fetch-proxies');
+  const container = $('#proxy-list-container');
+  const tbody = $('#proxy-list-body');
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengambil...';
+  
+  try {
+    // Fetch from proxifly raw list
+    const res = await fetch('https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/http/data.txt');
+    if (!res.ok) throw new Error('Gagal mengambil proxy');
+    
+    const text = await res.text();
+    const lines = text.split('\n').filter(l => l.trim().length > 0).slice(0, 50); // Ambil 50 teratas
+    
+    if (lines.length === 0) throw new Error('Daftar proxy kosong');
+    
+    tbody.innerHTML = lines.map(line => {
+      // Format: ip:port
+      const proxyUrl = `http://${line.trim()}`;
+      return `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid var(--border);">${line.trim()}</td>
+          <td style="padding: 8px; border-bottom: 1px solid var(--border);">Unknown</td>
+          <td style="padding: 8px; border-bottom: 1px solid var(--border); text-align: center;">
+            <button class="btn-primary" style="padding: 4px 8px; font-size: 11px; width: auto;" onclick="useProxy('${proxyUrl}')">Gunakan</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    container.classList.remove('hidden');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+  
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-download"></i> Fetch Free Proxies';
+}
+
+window.useProxy = function(url) {
+  $('#proxy-url-input').value = url;
+  saveProxy();
+};
+
+// ==================== IN-APP BROWSER ====================
+function openBrowser() {
+  $('#browser-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeBrowser() {
+  $('#browser-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+  $('#browser-iframe').src = 'about:blank';
+}
+
+function loadBrowserUrl() {
+  let url = $('#browser-url').value.trim();
+  if (!url) return;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+    $('#browser-url').value = url;
+  }
+  
+  const iframe = $('#browser-iframe');
+  const loading = $('#browser-loading');
+  
+  loading.classList.remove('hidden');
+  
+  // If proxy is active, we would ideally route the iframe through it.
+  // However, browsers don't allow setting proxy per-iframe.
+  // As a workaround for this demo, we just load the URL directly.
+  // Real proxying for iframes requires a backend proxy server (like a web proxy script).
+  iframe.src = url;
+  
+  iframe.onload = () => {
+    loading.classList.add('hidden');
+  };
+}
+
 // ==================== EVENT LISTENERS ====================
 document.addEventListener('DOMContentLoaded', async () => {
   applyTheme();
@@ -960,6 +1100,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load Cloudflare config & subdomains
   await loadCfConfig();
   await loadCfSubdomains();
+
+  // Load Proxy status
+  await loadProxyStatus();
 
   // Load any existing emails
   await loadEmails();
@@ -999,6 +1142,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#btn-cf-save').addEventListener('click', saveCfConfig);
   $('#cf-settings-modal').addEventListener('click', (e) => {
     if (e.target === $('#cf-settings-modal')) closeCfSettings();
+  });
+
+  // Proxy settings
+  $('#btn-open-proxy').addEventListener('click', () => {
+    $('#proxy-settings-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    loadProxyStatus();
+  });
+  $('#btn-close-proxy-settings').addEventListener('click', () => {
+    $('#proxy-settings-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+  });
+  $('#btn-save-proxy').addEventListener('click', saveProxy);
+  $('#btn-clear-proxy').addEventListener('click', clearProxy);
+  $('#btn-fetch-proxies').addEventListener('click', fetchFreeProxies);
+  $('#proxy-settings-modal').addEventListener('click', (e) => {
+    if (e.target === $('#proxy-settings-modal')) {
+      $('#proxy-settings-modal').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+  });
+
+  // In-App Browser
+  $('#btn-browser-go').addEventListener('click', loadBrowserUrl);
+  $('#btn-close-browser').addEventListener('click', closeBrowser);
+  $('#browser-url').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') loadBrowserUrl();
+  });
+  $('#browser-modal').addEventListener('click', (e) => {
+    if (e.target === $('#browser-modal')) closeBrowser();
   });
 
   // Guide toggle

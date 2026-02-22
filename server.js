@@ -1,12 +1,16 @@
 const express = require('express');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ==================== PROXY CONFIG ====================
+let activeProxy = null; // e.g., 'http://ip:port'
 
 // ==================== TEMP EMAIL API PROVIDERS ====================
 const PROVIDERS = [
@@ -48,6 +52,12 @@ const cfSubdomains = [];
 async function fetchWithTimeout(url, opts = {}, timeout = 10000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
+  
+  // Add proxy agent if active
+  if (activeProxy) {
+    opts.agent = new HttpsProxyAgent(activeProxy);
+  }
+
   try {
     const res = await fetch(url, { ...opts, signal: controller.signal });
     clearTimeout(timer);
@@ -1047,6 +1057,27 @@ app.get('/api/cloudflare/mailbox/:emailId/message/:messageId', async (req, res) 
     console.error(`❌ CF read message failed:`, err.message);
     res.status(500).json({ success: false, message: 'Gagal membaca pesan' });
   }
+});
+
+// ==================== PROXY ROUTES ====================
+app.get('/api/proxy/status', (req, res) => {
+  res.json({ success: true, activeProxy });
+});
+
+app.post('/api/proxy/set', (req, res) => {
+  const { proxyUrl } = req.body;
+  if (proxyUrl === null || proxyUrl === '') {
+    activeProxy = null;
+    return res.json({ success: true, message: 'Proxy dinonaktifkan' });
+  }
+  
+  // Basic validation
+  if (!proxyUrl.startsWith('http://') && !proxyUrl.startsWith('https://')) {
+    return res.status(400).json({ success: false, message: 'Format proxy tidak valid (harus http:// atau https://)' });
+  }
+  
+  activeProxy = proxyUrl;
+  res.json({ success: true, message: `Proxy diatur ke ${proxyUrl}` });
 });
 
 // Fallback to index.html for SPA

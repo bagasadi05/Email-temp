@@ -20,6 +20,9 @@
       </div>
       <div class="header-right">
         <span class="live-badge"><i class="fas fa-circle"></i> LIVE</span>
+        <button class="btn-settings" id="btn-open-proxy" title="Proxy Settings">
+          <i class="fas fa-network-wired"></i>
+        </button>
         <button class="btn-settings" id="btn-toggle-notifications" title="Toggle Notifications">
           <i class="fas fa-bell-slash"></i>
         </button>
@@ -515,6 +518,78 @@
         </div>
       </div>
     </div>
+
+    <!-- ==================== PROXY SETTINGS MODAL ==================== -->
+    <div class="modal hidden" id="proxy-settings-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title"><i class="fas fa-network-wired"></i> Proxy Settings</h3>
+          <button class="btn-close" id="btn-close-proxy-settings"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="card-section">
+          <p class="hint-text">Gunakan proxy untuk mengubah IP saat mengakses API backend (mail.tm, maildrop, dll) dan saat membuka In-App Browser.</p>
+          
+          <label class="label-normal" style="margin-top: 16px;">Status Proxy Backend</label>
+          <div class="proxy-status-box" id="proxy-status-box">
+            <i class="fas fa-shield-alt"></i> <span id="proxy-status-text">Mengecek status...</span>
+          </div>
+
+          <label class="label-normal" style="margin-top: 16px;">Set Custom Proxy</label>
+          <div class="proxy-input-row">
+            <input type="text" id="proxy-url-input" placeholder="http://ip:port" class="input-main">
+            <button class="btn-primary" id="btn-save-proxy" style="width: auto; padding: 0 16px;">Set</button>
+            <button class="btn-danger" id="btn-clear-proxy" style="width: auto; padding: 0 16px;" title="Matikan Proxy"><i class="fas fa-power-off"></i></button>
+          </div>
+          <p class="hint-text hint-small">Format: http://ip:port atau https://ip:port</p>
+
+          <div style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <label class="label-normal">Ambil Proxy Gratis</label>
+            <p class="hint-text hint-small">Mengambil daftar proxy HTTP gratis dari proxifly/free-proxy-list</p>
+            <button class="btn-secondary" id="btn-fetch-proxies" style="margin-top: 8px;">
+              <i class="fas fa-download"></i> Fetch Free Proxies
+            </button>
+            
+            <div id="proxy-list-container" class="proxy-list-container hidden" style="margin-top: 12px; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+              <table class="proxy-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <thead style="background: var(--bg); position: sticky; top: 0;">
+                  <tr>
+                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid var(--border);">IP:Port</th>
+                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid var(--border);">Country</th>
+                    <th style="padding: 8px; text-align: center; border-bottom: 1px solid var(--border);">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="proxy-list-body">
+                  <!-- Proxies will be loaded here -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== IN-APP BROWSER MODAL ==================== -->
+    <div class="modal hidden" id="browser-modal" style="z-index: 2000;">
+      <div class="modal-content" style="width: 95%; max-width: 1200px; height: 90vh; display: flex; flex-direction: column; padding: 0;">
+        <div class="modal-header" style="padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg); border-radius: var(--radius) var(--radius) 0 0;">
+          <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+            <i class="fas fa-globe" style="color: var(--primary);"></i>
+            <input type="text" id="browser-url" class="input-main" style="margin-bottom: 0; padding: 6px 12px; height: 32px;" placeholder="https://example.com" value="https://api.ipify.org?format=json">
+            <button class="btn-primary" id="btn-browser-go" style="width: auto; padding: 0 16px; height: 32px;">Go</button>
+          </div>
+          <button class="btn-close" id="btn-close-browser" style="margin-left: 16px;"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="flex: 1; background: #fff; position: relative;">
+          <iframe id="browser-iframe" style="width: 100%; height: 100%; border: none;" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+          <div id="browser-loading" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 32px; color: var(--primary);"></i>
+            <span style="font-weight: 500;">Memuat halaman via Proxy...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script src="/js/app.js"></script>

@@ -2011,3 +2011,78 @@ html, body {
   background: var(--text-secondary);
 }
 
+/* ==================== PROXY MODAL STYLES ==================== */
+.proxy-status-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.proxy-status-box.active {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.proxy-status-box.inactive {
+  background: var(--warning-light);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.proxy-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.proxy-list-container {
+  background: var(--white);
+}
+
+.proxy-table {
+  font-family: 'Inter', sans-serif;
+}
+
+.proxy-table th {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.proxy-table td {
+  color: var(--text-secondary);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
