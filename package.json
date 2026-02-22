@@ -1,0 +1,14 @@
+{
+  "name": "email-temp",
+  "version": "1.0.0",
+  "description": "Temporary Email Service with Subdomain Management",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "uuid": "^9.0.0"
+  }
+}

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Email Temp - Real Temporary Email</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="header-icon">
+          <i class="fas fa-envelope"></i>
+        </div>
+        <h1 id="header-title">Domain</h1>
+      </div>
+      <div class="header-right">
+        <span class="live-badge"><i class="fas fa-circle"></i> LIVE</span>
+        <button class="btn-settings" id="btn-toggle-notifications" title="Toggle Notifications">
+          <i class="fas fa-bell-slash"></i>
+        </button>
+        <button class="btn-settings" id="btn-toggle-theme" title="Toggle Dark Mode">
+          <i class="fas fa-moon"></i>
+        </button>
+        <button class="btn-settings" id="btn-open-settings" title="Cloudflare Settings">
+          <i class="fas fa-cloud"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Step Indicator -->
+    <div class="step-indicator">
+      <div class="step" id="step-ind-1">
+        <div class="step-circle active">1</div>
+        <span class="step-label">Domain</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" id="step-ind-2">
+        <div class="step-circle">2</div>
+        <span class="step-label">Buat Email</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" id="step-ind-3">
+        <div class="step-circle">3</div>
+        <span class="step-label">Mailbox</span>
+      </div>
+    </div>
+
+    <!-- ==================== PAGE 1: PILIH DOMAIN ==================== -->
+    <div class="page" id="page-domain">
+      <div class="card">
+        <h2 class="section-title"><i class="fas fa-globe"></i> Langkah 1: Pilih Domain</h2>
+        <div class="card-section">
+          <label class="label-upper">DOMAIN TERSEDIA (REAL)</label>
+          <p class="hint-text">Pilih salah satu domain. <strong>⭐ maildrop.cc</strong> lebih diterima oleh banyak layanan. Domain lain dari <strong>mail.tm/mail.gw</strong>.</p>
+          
+          <div class="domain-grid" id="domain-grid">
+            <div class="loading-spinner">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Memuat domain...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card info-card">
+        <div class="info-icon"><i class="fas fa-info-circle"></i></div>
+        <div class="info-text">
+          <strong>Cara Kerja:</strong> Pilih domain, buat email, lalu kirim email ke alamat tersebut dari email lain. Pesan akan muncul di Mailbox secara real-time!
+        </div>
+      </div>
+
+      <!-- Cloudflare Subdomains Section -->
+      <div class="card" id="cf-section" style="display:none;">
+        <h2 class="section-title"><i class="fas fa-cloud"></i> Subdomain Custom</h2>
+        <div class="card-section">
+          <label class="label-upper">CLOUDFLARE EMAIL ROUTING</label>
+          <p class="hint-text">Buat subdomain di domain Anda sendiri. Email ke <strong>user@subdomain.domain.com</strong> akan diterima secara real.</p>
+        </div>
+
+        <div class="card-section">
+          <label class="label-normal">Buat Subdomain Baru</label>
+          <div class="subdomain-create-row">
+            <input type="text" id="cf-subdomain-name" placeholder="contoh: edu" class="input-subdomain" autocomplete="off">
+            <span class="subdomain-create-dot">.</span>
+            <span class="subdomain-create-domain" id="cf-base-domain">domain.com</span>
+            <button class="btn-cf-create" id="btn-cf-create-subdomain">
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="cf-subdomain-list" class="cf-subdomain-list">
+          <!-- Subdomains appear here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PAGE 2: BUAT EMAIL ==================== -->
+    <div class="page hidden" id="page-email">
+      <div class="card">
+        <h2 class="section-title"><i class="fas fa-at"></i> Langkah 2: Buat Email</h2>
+        
+        <div class="card-section">
+          <div class="domain-badge">
+            <span class="badge-label">Domain Aktif:</span>
+            <span class="badge-value" id="email-domain-badge">-</span>
+            <button class="btn-change-domain" id="btn-change-domain" title="Ganti domain">
+              <i class="fas fa-exchange-alt"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="card-section">
+          <label class="label-normal">Subdomain <span class="optional-tag">(opsional)</span></label>
+          <div class="subdomain-input-row">
+            <input type="text" id="email-subdomain" placeholder="contoh: myshop" class="input-subdomain" autocomplete="off">
+            <span class="subdomain-separator">—</span>
+            <span class="subdomain-domain" id="subdomain-domain-text">domain.com</span>
+          </div>
+          <p class="hint-text hint-small">Subdomain akan menjadi prefix pada alamat email Anda (dipisah tanda hubung).</p>
+        </div>
+
+        <div class="card-section">
+          <label class="label-normal">Nama Email</label>
+          <div class="email-input-row">
+            <input type="text" id="email-login" placeholder="contoh: contact" class="input-main" autocomplete="off">
+            <span class="at-domain" id="at-domain">@...</span>
+          </div>
+          <p class="hint-text hint-small">Minimal 3 karakter. Huruf, angka, titik, underscore, tanda hubung.</p>
+        </div>
+
+        <div class="email-preview" id="email-preview-row" style="display:none;">
+          <i class="fas fa-eye"></i>
+          <span>Preview: </span>
+          <strong id="email-preview-text"></strong>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-primary" id="btn-create-email">
+            <i class="fas fa-plus-circle"></i> Buat Email
+          </button>
+          <button class="btn-secondary" id="btn-random-email">
+            <i class="fas fa-random"></i> Random
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Emails List -->
+      <div class="card" id="active-emails-card">
+        <h3 class="subsection-title">
+          <i class="fas fa-list"></i> Email Aktif Anda
+          <span class="email-count-badge" id="email-count-badge">0</span>
+        </h3>
+        <div id="email-list" class="email-list">
+          <div class="empty-state" id="no-email-text">
+            <i class="fas fa-envelope-open"></i>
+            <p>Belum ada email aktif</p>
+            <span>Buat email baru di atas untuk mulai menerima pesan</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PAGE 3: MAILBOX ==================== -->
+    <div class="page hidden" id="page-mailbox">
+      <div class="card">
+        <div class="mailbox-header">
+          <h2 class="section-title"><i class="fas fa-inbox"></i> Mailbox</h2>
+          <div class="mailbox-actions">
+            <span class="auto-refresh-badge" id="auto-refresh-badge">
+              <i class="fas fa-sync-alt fa-spin"></i> Auto
+            </span>
+            <button class="btn-icon" id="btn-refresh-mailbox" title="Refresh Manual">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="card-section">
+          <label class="label-normal">Pilih Email</label>
+          <div class="select-wrapper">
+            <select id="mailbox-email-select">
+              <option value="">-- Pilih email untuk cek inbox --</option>
+            </select>
+            <i class="fas fa-chevron-down select-arrow"></i>
+          </div>
+          <div class="selected-email-info" id="selected-email-info" style="display:none;">
+            <div class="email-address-display">
+              <span id="mailbox-address-text"></span>
+              <button class="btn-copy-small" id="btn-copy-address" title="Copy email">
+                <i class="fas fa-copy"></i>
+              </button>
+              <button class="btn-delete-small" id="btn-delete-address" title="Hapus email">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+            <p class="hint-text hint-small">Kirim email ke alamat di atas untuk menguji. Pesan akan muncul dalam beberapa detik.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="mailbox-list" class="mailbox-list">
+        <div class="empty-mailbox" id="empty-mailbox">
+          <i class="fas fa-inbox"></i>
+          <p>Tidak ada pesan</p>
+          <span>Kirim email ke alamat temp Anda — pesan akan otomatis muncul di sini</span>
+        </div>
+      </div>
+
+      <div class="loading-bar hidden" id="loading-bar">
+        <div class="loading-bar-inner"></div>
+      </div>
+
+      <!-- Mail Detail Modal -->
+      <div class="modal-overlay hidden" id="mail-modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="modal-subject">Subject</h3>
+            <button class="btn-close-modal" id="btn-close-modal">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="modal-meta">
+            <div><strong>Dari:</strong> <span id="modal-from"></span></div>
+            <div><strong>Kepada:</strong> <span id="modal-to"></span></div>
+            <div><strong>Tanggal:</strong> <span id="modal-date"></span></div>
+          </div>
+          <div class="modal-body" id="modal-body"></div>
+          <div class="modal-attachments hidden" id="modal-attachments">
+            <h4><i class="fas fa-paperclip"></i> Lampiran:</h4>
+            <div id="attachment-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-page="domain">
+        <i class="fas fa-globe"></i>
+        <span>Domain</span>
+      </button>
+      <button class="nav-item" data-page="email">
+        <i class="fas fa-at"></i>
+        <span>Buat Email</span>
+      </button>
+      <button class="nav-item" data-page="mailbox">
+        <i class="fas fa-inbox"></i>
+        <span>Mailbox</span>
+        <span class="nav-badge hidden" id="nav-badge-mailbox">0</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Cloudflare Settings Modal -->
+  <div class="modal-overlay hidden" id="cf-settings-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-cloud" style="color:var(--primary)"></i> Cloudflare Settings</h3>
+        <div class="modal-header-actions">
+          <button class="btn-guide-toggle" id="btn-toggle-guide" title="Panduan Setup">
+            <i class="fas fa-question-circle"></i> Panduan
+          </button>
+          <button class="btn-close-modal" id="btn-close-cf-settings">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="cf-settings-body">
+        <p class="hint-text" style="margin-bottom:16px">Hubungkan domain Anda melalui Cloudflare Email Routing untuk mendapatkan <strong>subdomain asli</strong> (contoh: <code>user@edu.domain.com</code>).</p>
+
+        <div class="cf-status" id="cf-status">
+          <i class="fas fa-times-circle"></i> Belum dikonfigurasi
+        </div>
+
+        <!-- GUIDE SECTION -->
+        <div class="cf-guide" id="cf-guide">
+          <div class="guide-header">
+            <i class="fas fa-book-open"></i>
+            <h4>Panduan Lengkap Setup Cloudflare</h4>
+          </div>
+
+          <!-- Prasyarat -->
+          <div class="guide-section">
+            <div class="guide-step-title">
+              <span class="guide-icon"><i class="fas fa-check-circle"></i></span>
+              Prasyarat
+            </div>
+            <ul class="guide-list">
+              <li>Akun Cloudflare (gratis) — <a href="https://dash.cloudflare.com/sign-up" target="_blank">daftar di sini</a></li>
+              <li>Domain yang sudah terdaftar di Cloudflare (nameserver mengarah ke Cloudflare)</li>
+              <li>Email Routing sudah diaktifkan (enable) di Cloudflare Dashboard</li>
+            </ul>
+          </div>
+
+          <!-- Step 1 -->
+          <div class="guide-section">
+            <div class="guide-step-title">
+              <span class="guide-step-num">1</span>
+              Buat API Token
+            </div>
+            <div class="guide-content">
+              <ol class="guide-ordered-list">
+                <li>Buka <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">dash.cloudflare.com/profile/api-tokens</a></li>
+                <li>Klik <span class="guide-btn-label">Create Token</span></li>
+                <li>Pilih <span class="guide-btn-label">Create Custom Token</span> (paling bawah)</li>
+                <li>Isi nama token, misal: <code>Email Temp App</code></li>
+                <li>Tambahkan <strong>Permissions</strong>:
+                  <div class="guide-permissions">
+                    <div class="guide-perm-row">
+                      <span class="perm-scope">Zone</span>
+                      <span class="perm-resource">DNS</span>
+                      <span class="perm-access">Edit</span>
+                    </div>
+                    <div class="guide-perm-row">
+                      <span class="perm-scope">Zone</span>
+                      <span class="perm-resource">Email Routing Rules</span>
+                      <span class="perm-access">Edit</span>
+                    </div>
+                    <div class="guide-perm-row">
+                      <span class="perm-scope">Account</span>
+                      <span class="perm-resource">Email Routing Addresses</span>
+                      <span class="perm-access">Edit</span>
+                    </div>
+                  </div>
+                </li>
+                <li>Pada <strong>Zone Resources</strong>, pilih:
+                  <div class="guide-note">
+                    <i class="fas fa-info-circle"></i>
+                    Include → Specific zone → <em>pilih domain Anda</em>
+                  </div>
+                </li>
+                <li>Klik <span class="guide-btn-label">Continue to summary</span> → <span class="guide-btn-label">Create Token</span></li>
+                <li>
+                  <div class="guide-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>PENTING:</strong> Salin token yang muncul sekarang! Token hanya ditampilkan <strong>sekali</strong> dan tidak bisa dilihat lagi.
+                  </div>
+                </li>
+                <li>Paste token ke kolom <strong>API Token</strong> di form bawah</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="guide-section">
+            <div class="guide-step-title">
+              <span class="guide-step-num">2</span>
+              Dapatkan Zone ID
+            </div>
+            <div class="guide-content">
+              <ol class="guide-ordered-list">
+                <li>Buka <a href="https://dash.cloudflare.com" target="_blank">Cloudflare Dashboard</a></li>
+                <li>Klik domain Anda dari daftar</li>
+                <li>Di halaman <strong>Overview</strong>, scroll ke bawah</li>
+                <li>Di panel kanan bawah, cari bagian <strong>"API"</strong></li>
+                <li>Salin <strong>Zone ID</strong> (string 32 karakter hex)
+                  <div class="guide-code-example">
+                    <code>Contoh: a1b2c3d4e5f6789012345678abcdef90</code>
+                  </div>
+                </li>
+                <li>Paste ke kolom <strong>Zone ID</strong> di form bawah</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="guide-section">
+            <div class="guide-step-title">
+              <span class="guide-step-num">3</span>
+              Account ID <span class="optional-tag">(opsional)</span>
+            </div>
+            <div class="guide-content">
+              <p class="guide-desc">Account ID ada di lokasi yang sama dengan Zone ID (panel kanan bawah halaman Overview). Biasanya opsional karena token sudah terikat ke zone tertentu.</p>
+              <div class="guide-note">
+                <i class="fas fa-lightbulb"></i>
+                Bisa dikosongkan jika tidak diperlukan. Isi hanya jika API mengembalikan error terkait account.
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="guide-section">
+            <div class="guide-step-title">
+              <span class="guide-step-num">4</span>
+              Aktifkan Email Routing
+            </div>
+            <div class="guide-content">
+              <ol class="guide-ordered-list">
+                <li>Di Cloudflare Dashboard, klik domain Anda</li>
+                <li>Di sidebar kiri, klik <strong>Email</strong> → <strong>Email Routing</strong></li>
+                <li>Klik <span class="guide-btn-label">Get started</span> jika belum aktif</li>
+                <li>Ikuti wizard untuk mengaktifkan Email Routing
+                  <div class="guide-note">
+                    <i class="fas fa-info-circle"></i>
+                    Cloudflare akan menambahkan MX record otomatis. Klik Accept jika diminta.
+                  </div>
+                </li>
+                <li>Pastikan status Email Routing berubah menjadi <span style="color:var(--success);font-weight:600">Active</span></li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="guide-section">
+            <div class="guide-step-title">
+              <span class="guide-step-num">5</span>
+              Isi Form & Hubungkan
+            </div>
+            <div class="guide-content">
+              <ol class="guide-ordered-list">
+                <li>Isi semua kolom di form di bawah panduan ini</li>
+                <li>Kolom <strong>Base Domain</strong> = domain utama yang terdaftar di Cloudflare (misal: <code>mydomain.com</code>)</li>
+                <li>Klik <span class="guide-btn-label">Simpan & Hubungkan</span></li>
+                <li>Sistem akan memverifikasi token dan zone ID Anda otomatis</li>
+              </ol>
+              <div class="guide-success">
+                <i class="fas fa-check-circle"></i>
+                Jika berhasil, status berubah hijau dan Anda bisa mulai membuat subdomain!
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 6: Menggunakan -->
+          <div class="guide-section">
+            <div class="guide-step-title">
+              <span class="guide-step-num">6</span>
+              Buat & Gunakan Subdomain
+            </div>
+            <div class="guide-content">
+              <ol class="guide-ordered-list">
+                <li>Tutup modal Settings</li>
+                <li>Di halaman Domain, bagian <strong>"Subdomain Custom"</strong> akan muncul</li>
+                <li>Ketik nama subdomain (misal: <code>edu</code>) lalu klik <strong>+</strong></li>
+                <li>Sistem otomatis membuat:
+                  <ul class="guide-sub-list">
+                    <li>MX record untuk <code>edu.mydomain.com</code></li>
+                    <li>Catch-all routing rule untuk meneruskan email</li>
+                    <li>Alamat penerima (destination) di Cloudflare</li>
+                  </ul>
+                </li>
+                <li>Klik <span class="guide-btn-label">Gunakan</span> untuk memilih subdomain</li>
+                <li>Buat email di halaman <strong>Buat Email</strong> → misal: <code>contact</code></li>
+                <li>Hasilnya: <strong>contact@edu.mydomain.com</strong> ✉️</li>
+              </ol>
+              <div class="guide-tip">
+                <i class="fas fa-magic"></i>
+                <strong>Tips:</strong> Anda bisa buat banyak subdomain dan banyak email per subdomain!
+              </div>
+            </div>
+          </div>
+
+          <!-- Troubleshooting -->
+          <div class="guide-section guide-section-warning">
+            <div class="guide-step-title">
+              <span class="guide-icon"><i class="fas fa-wrench"></i></span>
+              Troubleshooting
+            </div>
+            <div class="guide-content">
+              <div class="guide-faq">
+                <div class="faq-item">
+                  <strong>❌ "Token verification failed"</strong>
+                  <p>Token salah atau belum punya permission yang cukup. Buat ulang token dengan permission Zone.DNS (Edit) dan Email Routing Rules (Edit).</p>
+                </div>
+                <div class="faq-item">
+                  <strong>❌ "Zone not found"</strong>
+                  <p>Zone ID salah. Pastikan Anda menyalin Zone ID (bukan Account ID) dari halaman Overview domain.</p>
+                </div>
+                <div class="faq-item">
+                  <strong>❌ Email tidak masuk ke Mailbox</strong>
+                  <p>1) Pastikan Email Routing sudah Active di Cloudflare.<br>
+                  2) Tunggu 1-5 menit untuk propagasi DNS.<br>
+                  3) Pastikan destination address sudah terverifikasi (cek email dari Cloudflare).<br>
+                  4) Klik tombol "Verifikasi" pada subdomain untuk auto-check.</p>
+                </div>
+                <div class="faq-item">
+                  <strong>❌ "MX record already exists"</strong>
+                  <p>Subdomain sudah punya MX record. Hapus dulu di Cloudflare Dashboard → DNS → Records, lalu coba lagi.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- END GUIDE SECTION -->
+
+        <div class="cf-form">
+          <label class="label-normal">API Token <span class="required">*</span></label>
+          <input type="password" id="cf-api-token" placeholder="Cloudflare API Token" class="input-cf">
+          <p class="hint-text hint-small">Buat di Cloudflare Dashboard → My Profile → API Tokens. Perlu permission: Zone.DNS (Edit), Email Routing (Edit).</p>
+
+          <label class="label-normal">Zone ID <span class="required">*</span></label>
+          <input type="text" id="cf-zone-id" placeholder="Zone ID dari Cloudflare" class="input-cf">
+          <p class="hint-text hint-small">Ada di Overview halaman domain Anda di Cloudflare Dashboard (kanan bawah).</p>
+
+          <label class="label-normal">Account ID <span class="optional-tag">(opsional)</span></label>
+          <input type="text" id="cf-account-id" placeholder="Account ID" class="input-cf">
+
+          <label class="label-normal">Base Domain <span class="required">*</span></label>
+          <input type="text" id="cf-base-domain-input" placeholder="contoh: mydomain.com" class="input-cf">
+          <p class="hint-text hint-small">Domain utama yang terdaftar di Cloudflare.</p>
+        </div>
+
+        <div class="btn-row" style="margin-top:16px">
+          <button class="btn-primary" id="btn-cf-save">
+            <i class="fas fa-save"></i> Simpan & Hubungkan
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
