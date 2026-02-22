@@ -1031,11 +1031,15 @@ async function fetchFreeProxies() {
     if (lines.length === 0) throw new Error('Daftar proxy kosong');
     
     tbody.innerHTML = lines.map(line => {
-      // Format: ip:port
-      const proxyUrl = `http://${line.trim()}`;
+      // Format: ip:port or http://ip:port
+      const trimmed = line.trim();
+      const proxyUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://') 
+        ? trimmed 
+        : `http://${trimmed}`;
+      const displayText = trimmed.replace(/^https?:\/\//, ''); // Remove protocol for display
       return `
         <tr>
-          <td style="padding: 8px; border-bottom: 1px solid var(--border);">${line.trim()}</td>
+          <td style="padding: 8px; border-bottom: 1px solid var(--border);">${displayText}</td>
           <td style="padding: 8px; border-bottom: 1px solid var(--border);">Unknown</td>
           <td style="padding: 8px; border-bottom: 1px solid var(--border); text-align: center;">
             <button class="btn-primary" style="padding: 4px 8px; font-size: 11px; width: auto;" onclick="useProxy('${proxyUrl}')">Gunakan</button>
