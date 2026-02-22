@@ -1113,9 +1113,161 @@ app.get('/api/proxy/check-ip', async (req, res) => {
 });
 
 
+// ==================== BATCH EMAIL CREATION ====================
+app.post('/api/emails/batch', async (req, res) => {
+  const { count = 3, domain, provider, providerBase } = req.body;
+  const batchCount = Math.min(Math.max(parseInt(count) || 3, 1), 20);
+
+  if (!domain) {
+    return res.status(400).json({ success: false, message: 'Domain harus dipilih' });
+  }
+
+  const results = [];
+  const adjectives = ['cool', 'fast', 'smart', 'blue', 'red', 'dark', 'wild', 'bold', 'keen', 'pro', 'neo', 'max', 'zen', 'ace', 'top'];
+  const nouns = ['fox', 'wolf', 'bear', 'hawk', 'star', 'tech', 'code', 'byte', 'node', 'edge', 'link', 'data', 'core', 'net', 'web'];
+
+  for (let i = 0; i < batchCount; i++) {
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    const num = Math.floor(Math.random() * 9000) + 1000;
+    const login = `${adj}${noun}${num}`;
+    const address = `${login}@${domain}`;
+
+    // Check duplicate
+    if (createdEmails.find(e => e.address === address)) {
+      results.push({ address, success: false, message: 'Sudah ada' });
+      continue;
+    }
+
+    try {
+      if (provider === 'maildrop' || domain === 'maildrop.cc') {
+        const email = {
+          id: uuidv4(), address, login, domain: 'maildrop.cc',
+          password: null, provider: 'maildrop', providerBase: null,
+          accountId: null, token: null, isMaildrop: true,
+          createdAt: new Date().toISOString()
+        };
+        createdEmails.push(email);
+        results.push({ address, success: true, id: email.id });
+      } else if (providerBase) {
+        const password = 'TempPass' + uuidv4().slice(0, 8) + '!';
+        const createRes = await fetchWithTimeout(`${providerBase}/accounts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, password })
+        });
+        if (!createRes.ok) {
+          results.push({ address, success: false, message: `HTTP ${createRes.status}` });
+          continue;
+        }
+        const accountData = await createRes.json();
+        const tokenRes = await fetchWithTimeout(`${providerBase}/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, password })
+        });
+        const tokenData = tokenRes.ok ? await tokenRes.json() : { token: null };
+        const email = {
+          id: uuidv4(), address, login, domain, password,
+          provider, providerBase, accountId: accountData.id,
+          token: tokenData.token, createdAt: new Date().toISOString()
+        };
+        createdEmails.push(email);
+        results.push({ address, success: true, id: email.id });
+      }
+      // Small delay to avoid rate limiting
+      if (i < batchCount - 1) await new Promise(r => setTimeout(r, 500));
+    } catch (err) {
+      results.push({ address, success: false, message: err.message });
+    }
+  }
+
+  const successCount = results.filter(r => r.success).length;
+  console.log(`📧 Batch created: ${successCount}/${batchCount} emails on ${domain}`);
+  res.json({ success: true, results, created: successCount, total: batchCount });
+});
+
+// ==================== PROXY ROTATION ====================
+let proxyListCache = [];
+let proxyRotateIndex = 0;
+
+app.get('/api/proxy/list', async (req, res) => {
+  try {
+    const listRes = await fetch('https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/http/data.txt');
+    if (!listRes.ok) throw new Error('Gagal mengambil proxy');
+    const text = await listRes.text();
+    proxyListCache = text.split('\n').filter(l => l.trim()).map(l => {
+      const t = l.trim();
+      return t.startsWith('http://') || t.startsWith('https://') ? t : `http://${t}`;
+    });
+    proxyRotateIndex = 0;
+    res.json({ success: true, count: proxyListCache.length });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/proxy/rotate', (req, res) => {
+  if (proxyListCache.length === 0) {
+    return res.status(400).json({ success: false, message: 'Proxy list kosong. Fetch dulu!' });
+  }
+  const proxy = proxyListCache[proxyRotateIndex % proxyListCache.length];
+  proxyRotateIndex++;
+  activeProxy = proxy;
+  console.log(`🔄 Proxy rotated to: ${proxy} (${proxyRotateIndex}/${proxyListCache.length})`);
+  res.json({ success: true, proxy, index: proxyRotateIndex, total: proxyListCache.length });
+});
+
+// ==================== ACCOUNT TRACKER ====================
+const trackedAccounts = [];
+
+app.get('/api/accounts', (req, res) => {
+  res.json({ success: true, accounts: trackedAccounts });
+});
+
+app.post('/api/accounts', (req, res) => {
+  const { email, password, platform, notes } = req.body;
+  if (!email || !platform) {
+    return res.status(400).json({ success: false, message: 'Email dan platform wajib diisi' });
+  }
+  const account = {
+    id: uuidv4(),
+    email,
+    password: password || '',
+    platform,
+    notes: notes || '',
+    status: 'created',
+    createdAt: new Date().toISOString()
+  };
+  trackedAccounts.push(account);
+  console.log(`📋 Account tracked: ${email} on ${platform}`);
+  res.json({ success: true, account });
+});
+
+app.patch('/api/accounts/:id', (req, res) => {
+  const account = trackedAccounts.find(a => a.id === req.params.id);
+  if (!account) return res.status(404).json({ success: false, message: 'Account tidak ditemukan' });
+  const { password, status, notes } = req.body;
+  if (password !== undefined) account.password = password;
+  if (status !== undefined) account.status = status;
+  if (notes !== undefined) account.notes = notes;
+  res.json({ success: true, account });
+});
+
+app.delete('/api/accounts/:id', (req, res) => {
+  const idx = trackedAccounts.findIndex(a => a.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ success: false, message: 'Account tidak ditemukan' });
+  trackedAccounts.splice(idx, 1);
+  res.json({ success: true });
+});
+
+app.get('/api/accounts/export', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename="accounts_export.json"');
+  res.json(trackedAccounts);
+});
+
 // Fallback to index.html for SPA
-
-
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

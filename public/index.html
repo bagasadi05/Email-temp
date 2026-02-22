@@ -160,6 +160,31 @@
             <i class="fas fa-random"></i> Random
           </button>
         </div>
+
+        <!-- Batch Email Generator -->
+        <div class="batch-section">
+          <label class="label-normal" style="margin-top: 16px;">
+            <i class="fas fa-layer-group"></i> Batch Generate
+          </label>
+          <p class="hint-text hint-small">Buat banyak email sekaligus dengan username random.</p>
+          <div class="batch-controls">
+            <select id="batch-count" class="batch-select">
+              <option value="3">3 Email</option>
+              <option value="5">5 Email</option>
+              <option value="10">10 Email</option>
+              <option value="20">20 Email</option>
+            </select>
+            <button class="btn-primary" id="btn-batch-create">
+              <i class="fas fa-bolt"></i> Batch Create
+            </button>
+          </div>
+          <div id="batch-progress" class="batch-progress hidden">
+            <div class="batch-progress-bar">
+              <div class="batch-progress-fill" id="batch-progress-fill"></div>
+            </div>
+            <span id="batch-progress-text">0/0</span>
+          </div>
+        </div>
       </div>
 
       <!-- Active Emails List -->
@@ -217,11 +242,76 @@
 
           <!-- Quick Signup Section -->
           <div class="quick-signup-section" id="quick-signup-section" style="display:none;">
-            <label class="label-normal" style="margin-top: 16px;">
-              <i class="fas fa-rocket"></i> Quick Signup
-            </label>
-            <p class="hint-text hint-small">Email akan otomatis ter-copy dan halaman signup terbuka di tab baru
-            </p>
+            <div class="stealth-header">
+              <label class="label-normal" style="margin-top: 16px;">
+                <i class="fas fa-rocket"></i> Quick Signup
+              </label>
+              <div class="stealth-toggle">
+                <span class="stealth-label">🕵️ Stealth</span>
+                <label class="toggle-switch toggle-sm">
+                  <input type="checkbox" id="toggle-stealth" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Anti-Detection Checklist -->
+            <div class="stealth-checklist" id="stealth-checklist">
+              <div class="stealth-checklist-title">
+                <i class="fas fa-shield-alt"></i> Anti-Detection Checklist
+              </div>
+              <div class="stealth-items">
+                <label class="stealth-item">
+                  <input type="checkbox" class="stealth-check" data-tip="incognito">
+                  <span><strong>Incognito Mode</strong> — Buka <kbd>Ctrl+Shift+N</kbd> untuk window baru tanpa
+                    cookies</span>
+                </label>
+                <label class="stealth-item">
+                  <input type="checkbox" class="stealth-check" data-tip="cookies">
+                  <span><strong>Clear Cookies</strong> — Hapus cookies Kling AI: <kbd>Ctrl+Shift+Del</kbd></span>
+                </label>
+                <label class="stealth-item">
+                  <input type="checkbox" class="stealth-check" data-tip="profile">
+                  <span><strong>Chrome Profile</strong> — Gunakan Chrome Profile berbeda tiap akun</span>
+                </label>
+                <label class="stealth-item">
+                  <input type="checkbox" class="stealth-check" data-tip="ip">
+                  <span><strong>IP Berbeda</strong> — Aktifkan Auto-Rotate atau ganti VPN</span>
+                </label>
+              </div>
+              <div class="stealth-delay-row">
+                <i class="fas fa-clock"></i>
+                <span>Random Delay</span>
+                <select id="stealth-delay" class="batch-select" style="margin-left: auto;">
+                  <option value="0">Tanpa delay</option>
+                  <option value="10">10 detik</option>
+                  <option value="30" selected>30 detik</option>
+                  <option value="60">60 detik</option>
+                  <option value="90">90 detik</option>
+                </select>
+              </div>
+            </div>
+
+            <p class="hint-text hint-small" id="quick-signup-hint">Email akan otomatis ter-copy dan halaman signup
+              terbuka di tab baru</p>
+
+            <!-- Countdown Overlay -->
+            <div class="stealth-countdown hidden" id="stealth-countdown">
+              <div class="countdown-circle">
+                <svg width="80" height="80" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="36" fill="none" stroke="var(--border)" stroke-width="4" />
+                  <circle cx="40" cy="40" r="36" fill="none" stroke="var(--primary)" stroke-width="4"
+                    stroke-dasharray="226" id="countdown-ring" stroke-linecap="round" transform="rotate(-90 40 40)" />
+                </svg>
+                <span class="countdown-num" id="countdown-num">30</span>
+              </div>
+              <div class="countdown-info">
+                <span class="countdown-title">⏳ Menunggu...</span>
+                <span class="countdown-sub">Delay anti-deteksi aktif</span>
+                <button class="btn-skip" id="btn-skip-countdown">Skip <i class="fas fa-forward"></i></button>
+              </div>
+            </div>
+
             <div class="quick-signup-buttons">
               <button class="btn-quick-signup" data-platform="klingai" data-url="https://klingai.com/">
                 <i class="fas fa-video"></i> Kling AI
@@ -257,6 +347,51 @@
 
       <div class="loading-bar hidden" id="loading-bar">
         <div class="loading-bar-inner"></div>
+      </div>
+
+      <!-- ==================== ACCOUNT TRACKER ==================== -->
+      <div class="card" id="account-tracker-card">
+        <div class="tracker-header">
+          <h3 class="subsection-title">
+            <i class="fas fa-clipboard-list"></i> Account Tracker
+            <span class="email-count-badge" id="account-count-badge">0</span>
+          </h3>
+          <div class="tracker-actions">
+            <button class="btn-icon" id="btn-export-accounts" title="Export JSON">
+              <i class="fas fa-download"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Save Account Form -->
+        <div class="tracker-form">
+          <div class="tracker-form-row">
+            <input type="text" id="tracker-email" placeholder="Email" class="input-main" style="font-size: 12px;">
+            <input type="text" id="tracker-password" placeholder="Password" class="input-main" style="font-size: 12px;">
+          </div>
+          <div class="tracker-form-row">
+            <select id="tracker-platform" class="batch-select">
+              <option value="klingai">Kling AI</option>
+              <option value="midjourney">Midjourney</option>
+              <option value="openai">OpenAI</option>
+              <option value="github">GitHub</option>
+              <option value="discord">Discord</option>
+              <option value="other">Lainnya</option>
+            </select>
+            <button class="btn-primary" id="btn-save-account" style="width: auto; padding: 0 16px;">
+              <i class="fas fa-save"></i> Simpan
+            </button>
+          </div>
+        </div>
+
+        <!-- Account List -->
+        <div id="account-list" class="account-list">
+          <div class="empty-state" id="no-accounts-text">
+            <i class="fas fa-clipboard"></i>
+            <p>Belum ada akun tersimpan</p>
+            <span>Simpan akun yang sudah didaftarkan di atas</span>
+          </div>
+        </div>
       </div>
 
       <!-- Mail Detail Modal -->
@@ -572,11 +707,11 @@
     </div>
 
     <!-- ==================== PROXY SETTINGS MODAL ==================== -->
-    <div class="modal hidden" id="proxy-settings-modal">
+    <div class="modal-overlay hidden" id="proxy-settings-modal">
       <div class="modal-content">
         <div class="modal-header">
           <h3 class="modal-title"><i class="fas fa-network-wired"></i> Proxy Settings</h3>
-          <button class="btn-close" id="btn-close-proxy-settings"><i class="fas fa-times"></i></button>
+          <button class="btn-close-modal" id="btn-close-proxy-settings"><i class="fas fa-times"></i></button>
         </div>
 
         <div class="card-section">
@@ -588,6 +723,21 @@
             <i class="fas fa-shield-alt"></i> <span id="proxy-status-text">Mengecek status...</span>
           </div>
 
+          <!-- Auto Rotate Toggle -->
+          <div class="auto-rotate-row">
+            <div class="auto-rotate-info">
+              <i class="fas fa-sync-alt" style="color: var(--primary);"></i>
+              <div>
+                <span class="auto-rotate-label">Auto Rotate IP</span>
+                <span class="auto-rotate-hint">Ganti IP otomatis saat Quick Signup</span>
+              </div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-auto-rotate">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
           <div id="copy-proxy-section" class="hidden" style="margin-top: 12px;">
             <button class="btn-primary" id="btn-copy-proxy" style="width: 100%;">
               <i class="fas fa-copy"></i> Copy Proxy URL (Untuk Chrome Extension)
@@ -596,13 +746,16 @@
               💡 Install salah satu extension Chrome berikut, lalu paste proxy URL ini:
             </p>
             <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
-              <a href="https://chromewebstore.google.com/detail/urban-vpn-proxy/eppiocemhmnlbhjplcgkofciiegomcon" target="_blank" class="btn-ext-link">
+              <a href="https://chromewebstore.google.com/detail/urban-vpn-proxy/eppiocemhmnlbhjplcgkofciiegomcon"
+                target="_blank" class="btn-ext-link">
                 <i class="fas fa-shield-alt"></i> Urban VPN
               </a>
-              <a href="https://chromewebstore.google.com/detail/proxy-switchyomega/padekgcemlokbadohgkifijomclgjgif" target="_blank" class="btn-ext-link">
+              <a href="https://chromewebstore.google.com/detail/proxy-switchyomega/padekgcemlokbadohgkifijomclgjgif"
+                target="_blank" class="btn-ext-link">
                 <i class="fas fa-exchange-alt"></i> Proxy SwitchyOmega
               </a>
-              <a href="https://chromewebstore.google.com/detail/foxyproxy-standard/gcknhkkoolaabfmlnjonogaaifnjlfnp" target="_blank" class="btn-ext-link">
+              <a href="https://chromewebstore.google.com/detail/foxyproxy-standard/gcknhkkoolaabfmlnjonogaaifnjlfnp"
+                target="_blank" class="btn-ext-link">
                 <i class="fas fa-fox"></i> FoxyProxy
               </a>
             </div>

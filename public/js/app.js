@@ -16,7 +16,10 @@ const state = {
   cfBaseDomain: '',
   cfSubdomains: [],        // [{ name, fullDomain, verified, catchAllEmail, createdAt }]
   // Proxy
-  activeProxy: null
+  activeProxy: null,
+  autoRotate: false,
+  // Account Tracker
+  accounts: []
 };
 
 // ==================== DOM ELEMENTS ====================
@@ -1107,6 +1110,8 @@ function copyProxyUrl() {
   }
 }
 
+let stealthSkipResolve = null;
+
 function quickSignup(platform, url) {
   const selectedEmail = $('#mailbox-email-select').value;
 
@@ -1133,14 +1138,88 @@ function quickSignup(platform, url) {
     url = customUrl;
   }
 
-  // Copy email to clipboard and open URL in new tab
-  navigator.clipboard.writeText(emailAddress).then(() => {
-    showToast(`✓ Email ${emailAddress} ter-copy! Paste di form ${platform}`, 'success');
+  const stealthEnabled = $('#toggle-stealth')?.checked;
+
+  const doSignup = async () => {
+    // Auto-rotate IP if enabled
+    if (state.autoRotate) {
+      try {
+        const rotateData = await api('POST', '/api/proxy/rotate');
+        if (rotateData.success) {
+          showToast(`🔄 IP rotated: ${rotateData.proxy} (${rotateData.index}/${rotateData.total})`, 'info');
+          await loadProxyStatus();
+        }
+      } catch (e) {
+        showToast('⚠️ Auto-rotate gagal, lanjut tanpa rotate', 'warning');
+      }
+    }
+
+    // Stealth delay with countdown
+    if (stealthEnabled) {
+      const baseDelay = parseInt($('#stealth-delay')?.value || '0');
+      if (baseDelay > 0) {
+        // Add random ±30% variation
+        const variation = Math.floor(baseDelay * 0.3 * (Math.random() * 2 - 1));
+        const totalDelay = Math.max(5, baseDelay + variation);
+
+        const countdownEl = $('#stealth-countdown');
+        const numEl = $('#countdown-num');
+        const ringEl = $('#countdown-ring');
+        const circumference = 226;
+
+        countdownEl.classList.remove('hidden');
+
+        let remaining = totalDelay;
+        let skipped = false;
+
+        const skipPromise = new Promise(resolve => {
+          stealthSkipResolve = () => { skipped = true; resolve(); };
+        });
+
+        const countdownPromise = new Promise(resolve => {
+          const interval = setInterval(() => {
+            if (skipped) {
+              clearInterval(interval);
+              resolve();
+              return;
+            }
+            remaining--;
+            numEl.textContent = remaining;
+            const progress = 1 - (remaining / totalDelay);
+            ringEl.setAttribute('stroke-dashoffset', circumference * (1 - progress));
+
+            if (remaining <= 0) {
+              clearInterval(interval);
+              resolve();
+            }
+          }, 1000);
+
+          // Initialise
+          numEl.textContent = totalDelay;
+          ringEl.setAttribute('stroke-dashoffset', String(circumference));
+        });
+
+        await Promise.race([countdownPromise, skipPromise]);
+        countdownEl.classList.add('hidden');
+        stealthSkipResolve = null;
+      }
+    }
+
+    // Copy email to clipboard and open URL in new tab
+    try {
+      await navigator.clipboard.writeText(emailAddress);
+      showToast(`✓ Email ${emailAddress} ter-copy! Paste di form ${platform}`, 'success');
+    } catch {
+      showToast(`Email: ${emailAddress} (Copy manual)`, 'info');
+    }
     window.open(url, '_blank');
-  }).catch(() => {
-    showToast(`Email: ${emailAddress} (Copy manual)`, 'info');
-    window.open(url, '_blank');
-  });
+
+    // Auto-fill tracker
+    if ($('#tracker-email')) {
+      $('#tracker-email').value = emailAddress;
+    }
+  };
+  doSignup();
 }
 
 async function checkIpViaProxy() {
@@ -1174,7 +1253,202 @@ async function checkIpViaProxy() {
 
 
 
-// ==================== EVENT LISTENERS ====================
+// ==================== BATCH EMAIL GENERATOR ====================
+async function batchCreateEmails() {
+  if (!state.selectedDomain) {
+    showToast('Pilih domain terlebih dahulu!', 'error');
+    navigateTo('domain');
+    return;
+  }
+
+  const count = parseInt($('#batch-count').value) || 3;
+  const btn = $('#btn-batch-create');
+  const progress = $('#batch-progress');
+  const fill = $('#batch-progress-fill');
+  const text = $('#batch-progress-text');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+  progress.classList.remove('hidden');
+  fill.style.width = '0%';
+  text.textContent = `0/${count}`;
+
+  try {
+    const data = await api('POST', '/api/emails/batch', {
+      count,
+      domain: state.selectedDomain.domain,
+      provider: state.selectedDomain.provider,
+      providerBase: state.selectedDomain.providerBase
+    });
+
+    if (data.success) {
+      // Animate progress
+      fill.style.width = '100%';
+      text.textContent = `${data.created}/${data.total}`;
+
+      showToast(`✅ ${data.created}/${data.total} email berhasil dibuat!`, 'success');
+      await loadEmails();
+      updateMailboxEmailSelect();
+
+      // Show results
+      const failed = data.results.filter(r => !r.success);
+      if (failed.length > 0) {
+        showToast(`⚠️ ${failed.length} gagal: ${failed[0].message}`, 'warning');
+      }
+    } else {
+      showToast(data.message || 'Batch creation gagal', 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan saat batch create', 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-bolt"></i> Batch Create';
+  setTimeout(() => progress.classList.add('hidden'), 3000);
+}
+
+// ==================== PROXY ROTATION ====================
+async function rotateProxy() {
+  try {
+    const data = await api('POST', '/api/proxy/rotate');
+    if (data.success) {
+      showToast(`🔄 Proxy rotated: ${data.proxy}`, 'success');
+      await loadProxyStatus();
+      return true;
+    } else {
+      showToast(data.message, 'error');
+      return false;
+    }
+  } catch {
+    showToast('Gagal rotate proxy', 'error');
+    return false;
+  }
+}
+
+async function fetchProxyListServer() {
+  try {
+    const data = await api('GET', '/api/proxy/list');
+    if (data.success) {
+      showToast(`✅ ${data.count} proxy loaded! Auto-rotate siap.`, 'success');
+    } else {
+      showToast(data.message, 'error');
+    }
+  } catch {
+    showToast('Gagal fetch proxy list', 'error');
+  }
+}
+
+// ==================== ACCOUNT TRACKER ====================
+async function loadAccounts() {
+  try {
+    const data = await api('GET', '/api/accounts');
+    if (data.success) {
+      state.accounts = data.accounts;
+      renderAccounts();
+    }
+  } catch (err) {
+    console.error('Failed to load accounts:', err);
+  }
+}
+
+function renderAccounts() {
+  const list = $('#account-list');
+  const badge = $('#account-count-badge');
+  badge.textContent = state.accounts.length;
+
+  if (state.accounts.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state" id="no-accounts-text">
+        <i class="fas fa-clipboard"></i>
+        <p>Belum ada akun tersimpan</p>
+        <span>Simpan akun yang sudah didaftarkan di atas</span>
+      </div>`;
+    return;
+  }
+
+  const platformIcons = {
+    klingai: 'fa-video', midjourney: 'fa-palette', openai: 'fa-brain',
+    github: 'fa-code-branch', discord: 'fa-gamepad', other: 'fa-globe'
+  };
+
+  list.innerHTML = state.accounts.map(acc => `
+    <div class="account-item">
+      <div class="account-item-icon">
+        <i class="fas ${platformIcons[acc.platform] || 'fa-user'}"></i>
+      </div>
+      <div class="account-item-info">
+        <div class="account-item-email">${escapeHtml(acc.email)}</div>
+        <div class="account-item-meta">
+          <span class="account-item-platform">${acc.platform}</span>
+          <span>${acc.password ? '🔑 saved' : ''}</span>
+        </div>
+      </div>
+      <div class="account-item-actions">
+        <button class="btn-copy-acc" onclick="copyToClipboard('${acc.email}\\n${acc.password || ''}')" title="Copy credentials">
+          <i class="fas fa-copy"></i>
+        </button>
+        <button class="btn-del-acc" onclick="deleteAccount('${acc.id}')" title="Hapus">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function saveAccount() {
+  const email = $('#tracker-email').value.trim();
+  const password = $('#tracker-password').value.trim();
+  const platform = $('#tracker-platform').value;
+
+  if (!email) {
+    showToast('Email wajib diisi', 'error');
+    return;
+  }
+
+  try {
+    const data = await api('POST', '/api/accounts', { email, password, platform });
+    if (data.success) {
+      showToast(`📋 Akun ${email} tersimpan!`, 'success');
+      $('#tracker-email').value = '';
+      $('#tracker-password').value = '';
+      await loadAccounts();
+    } else {
+      showToast(data.message, 'error');
+    }
+  } catch {
+    showToast('Gagal menyimpan akun', 'error');
+  }
+}
+
+async function deleteAccount(id) {
+  if (!confirm('Hapus akun ini?')) return;
+  try {
+    const data = await api('DELETE', `/api/accounts/${id}`);
+    if (data.success) {
+      showToast('Akun dihapus', 'success');
+      await loadAccounts();
+    }
+  } catch {
+    showToast('Gagal menghapus akun', 'error');
+  }
+}
+
+function exportAccounts() {
+  if (state.accounts.length === 0) {
+    showToast('Tidak ada akun untuk di-export', 'error');
+    return;
+  }
+  const blob = new Blob([JSON.stringify(state.accounts, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `accounts_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`📥 ${state.accounts.length} akun di-export!`, 'success');
+}
+
+// ==================== EVENT LISTENERS ==
 document.addEventListener('DOMContentLoaded', async () => {
   applyTheme();
   applyNotifications();
@@ -1210,6 +1484,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Email page
   $('#btn-create-email').addEventListener('click', createEmail);
   $('#btn-random-email').addEventListener('click', createRandomEmail);
+  $('#btn-batch-create').addEventListener('click', batchCreateEmails);
 
   // Live preview on input
   $('#email-subdomain').addEventListener('input', updateEmailPreview);
@@ -1246,6 +1521,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#btn-copy-proxy').addEventListener('click', copyProxyUrl);
   $('#btn-check-ip').addEventListener('click', checkIpViaProxy);
   $('#btn-fetch-proxies').addEventListener('click', fetchFreeProxies);
+  $('#toggle-auto-rotate').addEventListener('change', (e) => {
+    state.autoRotate = e.target.checked;
+    if (state.autoRotate) {
+      fetchProxyListServer();
+      showToast('🔄 Auto-rotate aktif! IP akan berganti tiap Quick Signup', 'success');
+    } else {
+      showToast('Auto-rotate dinonaktifkan', 'info');
+    }
+  });
   $('#proxy-settings-modal').addEventListener('click', (e) => {
     if (e.target === $('#proxy-settings-modal')) {
       $('#proxy-settings-modal').classList.add('hidden');
@@ -1253,6 +1537,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Account Tracker
+  $('#btn-save-account').addEventListener('click', saveAccount);
+  $('#btn-export-accounts').addEventListener('click', exportAccounts);
+  loadAccounts();
 
 
   // Guide toggle
@@ -1301,6 +1589,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // Stealth Mode
+  $('#toggle-stealth').addEventListener('change', (e) => {
+    const checklist = $('#stealth-checklist');
+    if (e.target.checked) {
+      checklist.style.display = 'block';
+    } else {
+      checklist.style.display = 'none';
+    }
+  });
+  $('#btn-skip-countdown').addEventListener('click', () => {
+    if (stealthSkipResolve) stealthSkipResolve();
+  });
+
   // Modal
   $('#btn-close-modal').addEventListener('click', closeMailModal);
   $('#mail-modal').addEventListener('click', (e) => {
@@ -1310,3 +1611,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Set initial page
   navigateTo('domain');
 });
+// Auto-fill tracker email from selected mailbox email
+function autoFillTrackerEmail() {
+  const email = state.emails.find(e => e.id === state.selectedEmailId);
+  if (email && $('#tracker-email')) {
+    $('#tracker-email').value = email.address;
+  }
+}
