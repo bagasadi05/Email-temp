@@ -966,6 +966,7 @@ function updateProxyUI() {
   const statusBox = $('#proxy-status-box');
   const statusText = $('#proxy-status-text');
   const input = $('#proxy-url-input');
+  const copySection = $('#copy-proxy-section');
   
   // Only update if elements exist (modal is open or has been opened)
   if (!statusBox || !input) return;
@@ -974,10 +975,12 @@ function updateProxyUI() {
     statusBox.className = 'proxy-status-box active';
     statusBox.innerHTML = `<i class="fas fa-shield-alt"></i> <span id="proxy-status-text">Aktif: ${state.activeProxy}</span>`;
     input.value = state.activeProxy;
+    if (copySection) copySection.classList.remove('hidden');
   } else {
     statusBox.className = 'proxy-status-box inactive';
     statusBox.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span id="proxy-status-text">Tidak Aktif (Menggunakan IP Asli)</span>`;
     input.value = '';
+    if (copySection) copySection.classList.add('hidden');
   }
 }
 
@@ -1061,6 +1064,40 @@ window.useProxy = function(url) {
   $('#proxy-url-input').value = url;
   saveProxy();
 };
+
+function copyProxyUrl() {
+  if (!state.activeProxy) {
+    showToast('Tidak ada proxy aktif', 'error');
+    return;
+  }
+  
+  // Parse proxy URL to extract IP and port
+  try {
+    const proxyUrl = state.activeProxy;
+    const match = proxyUrl.match(/^(https?:\/\/)(.+):(\d+)$/);
+    
+    if (match) {
+      const [, protocol, ip, port] = match;
+      const copyText = `Protocol: ${protocol.replace('://', '').toUpperCase()}\nServer: ${ip}\nPort: ${port}\n\nFull URL: ${proxyUrl}`;
+      
+      navigator.clipboard.writeText(copyText).then(() => {
+        showToast('✓ Proxy URL berhasil di-copy!', 'success');
+      }).catch(() => {
+        // Fallback: show alert with proxy URL
+        prompt('Copy Proxy URL ini:', proxyUrl);
+      });
+    } else {
+      // If parsing fails, just copy the full URL
+      navigator.clipboard.writeText(state.activeProxy).then(() => {
+        showToast('✓ Proxy URL berhasil di-copy!', 'success');
+      }).catch(() => {
+        prompt('Copy Proxy URL ini:', state.activeProxy);
+      });
+    }
+  } catch (err) {
+    showToast('Gagal copy proxy URL', 'error');
+  }
+}
 
 async function checkIpViaProxy() {
   const btn = $('#btn-check-ip');
@@ -1195,6 +1232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   $('#btn-save-proxy').addEventListener('click', saveProxy);
   $('#btn-clear-proxy').addEventListener('click', clearProxy);
+  $('#btn-copy-proxy').addEventListener('click', copyProxyUrl);
   $('#btn-check-ip').addEventListener('click', checkIpViaProxy);
   $('#btn-fetch-proxies').addEventListener('click', fetchFreeProxies);
   $('#proxy-settings-modal').addEventListener('click', (e) => {
