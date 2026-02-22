@@ -20,6 +20,14 @@
       "dest": "/server.js"
     },
     {
+      "src": "/api/proxy/check-ip",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/api/proxy/fetch",
+      "dest": "/server.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server.js"
     },

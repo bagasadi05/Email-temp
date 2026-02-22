@@ -1058,6 +1058,35 @@ window.useProxy = function(url) {
   saveProxy();
 };
 
+async function checkIpViaProxy() {
+  const btn = $('#btn-check-ip');
+  const resultBox = $('#ip-check-result');
+  const resultText = $('#ip-check-text');
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+  resultBox.classList.remove('hidden');
+  resultText.textContent = 'Checking...';
+  
+  try {
+    const data = await api('GET', '/api/proxy/check-ip');
+    if (data.success) {
+      const proxyStatus = data.usingProxy ? `via ${data.proxyUrl}` : 'Tanpa Proxy (IP Asli)';
+      resultText.innerHTML = `IP: <strong>${data.ip}</strong><br><small>${proxyStatus}</small>`;
+    } else {
+      throw new Error(data.message || 'Gagal mengecek IP');
+    }
+  } catch (err) {
+    resultText.textContent = `Error: ${err.message}`;
+    resultBox.style.background = 'var(--danger-light)';
+    resultBox.style.borderColor = 'var(--danger)';
+    resultBox.style.color = 'var(--danger)';
+  }
+  
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-map-marker-alt"></i> Check IP via Proxy';
+}
+
 // ==================== IN-APP BROWSER ====================
 function openBrowser() {
   $('#browser-modal').classList.remove('hidden');
@@ -1083,11 +1112,10 @@ function loadBrowserUrl() {
   
   loading.classList.remove('hidden');
   
-  // If proxy is active, we would ideally route the iframe through it.
-  // However, browsers don't allow setting proxy per-iframe.
-  // As a workaround for this demo, we just load the URL directly.
-  // Real proxying for iframes requires a backend proxy server (like a web proxy script).
-  iframe.src = url;
+  // Use backend proxy endpoint to fetch the URL via proxy
+  // This way, the request goes through our backend which uses the configured proxy
+  const proxyUrl = `/api/proxy/fetch?url=${encodeURIComponent(url)}`;
+  iframe.src = proxyUrl;
   
   iframe.onload = () => {
     loading.classList.add('hidden');
@@ -1163,6 +1191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   $('#btn-save-proxy').addEventListener('click', saveProxy);
   $('#btn-clear-proxy').addEventListener('click', clearProxy);
+  $('#btn-check-ip').addEventListener('click', checkIpViaProxy);
   $('#btn-fetch-proxies').addEventListener('click', fetchFreeProxies);
   $('#proxy-settings-modal').addEventListener('click', (e) => {
     if (e.target === $('#proxy-settings-modal')) {

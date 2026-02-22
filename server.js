@@ -1080,6 +1080,82 @@ app.post('/api/proxy/set', (req, res) => {
   res.json({ success: true, message: `Proxy diatur ke ${proxyUrl}` });
 });
 
+// Check IP via proxy
+app.get('/api/proxy/check-ip', async (req, res) => {
+  try {
+    const opts = { timeout: 10000 };
+    
+    if (activeProxy) {
+      opts.agent = new HttpsProxyAgent(activeProxy);
+    }
+    
+    // Use ipify API to get IP
+    const ipRes = await fetch('https://api.ipify.org?format=json', opts);
+    if (!ipRes.ok) throw new Error(`HTTP ${ipRes.status}`);
+    
+    const data = await ipRes.json();
+    
+    res.json({
+      success: true,
+      ip: data.ip,
+      usingProxy: activeProxy !== null,
+      proxyUrl: activeProxy
+    });
+  } catch (err) {
+    console.error('Check IP error:', err.message);
+    res.status(500).json({
+      success: false,
+      message: `Gagal mengecek IP: ${err.message}`
+    });
+  }
+});
+
+// Web proxy for browsing (fetch any URL via proxy)
+app.get('/api/proxy/fetch', async (req, res) => {
+  const targetUrl = req.query.url;
+  
+  if (!targetUrl) {
+    return res.status(400).json({ success: false, message: 'URL parameter required' });
+  }
+  
+  try {
+    const opts = {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    };
+    
+    if (activeProxy) {
+      opts.agent = new HttpsProxyAgent(activeProxy);
+    }
+    
+    const response = await fetch(targetUrl, opts);
+    const contentType = response.headers.get('content-type') || 'text/html';
+    
+    // Forward headers
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('X-Proxied-By', activeProxy || 'Direct');
+    
+    // Stream response
+    const body = await response.arrayBuffer();
+    res.send(Buffer.from(body));
+  } catch (err) {
+    console.error('Proxy fetch error:', err.message);
+    res.status(500).send(`
+      <html>
+        <head><title>Proxy Error</title></head>
+        <body style="font-family: sans-serif; padding: 20px;">
+          <h2>❌ Proxy Fetch Failed</h2>
+          <p><strong>Error:</strong> ${err.message}</p>
+          <p><strong>Target URL:</strong> ${targetUrl}</p>
+          <p><strong>Proxy:</strong> ${activeProxy || 'Direct (No Proxy)'}</p>
+        </body>
+      </html>
+    `);
+  }
+});
+
 // Fallback to index.html for SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
