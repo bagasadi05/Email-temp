@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Proxifly Proxy Switcher</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="header">
+        <div>
+          <h1>Proxifly Switcher</h1>
+          <p class="muted">Ganti proxy browser cepat dari daftar proxifly</p>
+        </div>
+        <span id="proxyStateBadge" class="badge off">OFF</span>
+      </header>
+
+      <section class="panel">
+        <div class="row spread">
+          <span class="label">Proxy aktif</span>
+          <span id="activeProxy" class="value">-</span>
+        </div>
+        <div class="row spread">
+          <span class="label">IP publik</span>
+          <span id="publicIp" class="value">Belum dicek</span>
+        </div>
+        <div class="row">
+          <button id="checkIpBtn" class="btn btn-secondary" type="button">Cek IP</button>
+          <button id="disableBtn" class="btn btn-danger" type="button">Matikan Proxy</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="grid">
+          <label>
+            <span class="label">Protocol</span>
+            <select id="protocolSelect">
+              <option value="all">All</option>
+              <option value="http">HTTP</option>
+              <option value="https">HTTPS</option>
+              <option value="socks4">SOCKS4</option>
+              <option value="socks5">SOCKS5</option>
+            </select>
+          </label>
+          <label>
+            <span class="label">Tampil</span>
+            <select id="limitSelect">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row">
+          <button id="refreshBtn" class="btn btn-secondary" type="button">Refresh Daftar</button>
+          <button id="smartPreferredBtn" class="btn" type="button">Auto US/UK/FR</button>
+          <button id="randomBtn" class="btn" type="button">Random Switch</button>
+          <button id="nextBtn" class="btn" type="button">Next</button>
+        </div>
+
+        <div class="row">
+          <span class="label">Negara aktif untuk list/switch: US, UK(GB), FR</span>
+        </div>
+
+        <div class="list-wrap">
+          <select id="proxyList" size="10" aria-label="Daftar proxy"></select>
+        </div>
+
+        <div class="row spread meta">
+          <span id="listMeta">Memuat...</span>
+          <button id="applyBtn" class="btn" type="button">Pakai Proxy Terpilih</button>
+        </div>
+      </section>
+
+      <p id="message" class="message" role="status" aria-live="polite"></p>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+  </html>

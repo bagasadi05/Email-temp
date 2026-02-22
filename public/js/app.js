@@ -517,10 +517,18 @@ function showSelectedEmailInfo() {
   const info = $('#selected-email-info');
   info.style.display = 'block';
   $('#mailbox-address-text').textContent = email.address;
+  
+  // Show quick signup section
+  const quickSignup = $('#quick-signup-section');
+  if (quickSignup) quickSignup.style.display = 'block';
 }
 
 function hideSelectedEmailInfo() {
   $('#selected-email-info').style.display = 'none';
+  
+  // Hide quick signup section
+  const quickSignup = $('#quick-signup-section');
+  if (quickSignup) quickSignup.style.display = 'none';
 }
 
 async function checkMailbox() {
@@ -1099,6 +1107,57 @@ function copyProxyUrl() {
   }
 }
 
+function quickSignup(platform, url) {
+  const selectedEmail = $('#mailbox-email-select').value;
+  
+  if (!selectedEmail) {
+    showToast('Pilih email terlebih dahulu', 'error');
+    return;
+  }
+  
+  // Get email address from state
+  const emailData = state.emails.find(e => e.id === selectedEmail);
+  if (!emailData) {
+    showToast('Email tidak ditemukan', 'error');
+    return;
+  }
+  
+  const emailAddress = emailData.address;
+  
+  // Handle custom URL
+  if (url === 'custom') {
+    const customUrl = prompt('Masukkan URL signup page:', 'https://');
+    if (!customUrl || !customUrl.startsWith('http')) {
+      showToast('URL tidak valid', 'error');
+      return;
+    }
+    url = customUrl;
+  }
+  
+  // Copy email to clipboard
+  navigator.clipboard.writeText(emailAddress).then(() => {
+    showToast(`✓ Email ${emailAddress} ter-copy!`, 'success');
+    
+    // Open URL in In-App Browser
+    $('#browser-url').value = url;
+    $('#browser-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Load the URL
+    setTimeout(() => {
+      loadBrowserUrl();
+      showToast(`📧 Paste email yang sudah ter-copy di form ${platform}`, 'info');
+    }, 300);
+  }).catch(() => {
+    // Fallback if clipboard fails
+    showToast(`Email: ${emailAddress} (Copy manual)`, 'info');
+    $('#browser-url').value = url;
+    $('#browser-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => loadBrowserUrl(), 300);
+  });
+}
+
 async function checkIpViaProxy() {
   const btn = $('#btn-check-ip');
   const resultBox = $('#ip-check-result');
@@ -1287,6 +1346,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (state.selectedEmailId) {
       deleteEmail(state.selectedEmailId);
     }
+  });
+
+  // Quick Signup buttons
+  $$('.btn-quick-signup').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const platform = e.currentTarget.dataset.platform;
+      const url = e.currentTarget.dataset.url;
+      quickSignup(platform, url);
+    });
   });
 
   // Modal

@@ -2086,3 +2086,75 @@ html, body {
   cursor: not-allowed;
   transform: none;
 }
+
+/* Quick Signup Buttons */
+.quick-signup-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.quick-signup-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn-quick-signup {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-quick-signup::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.btn-quick-signup:hover::before {
+  left: 100%;
+}
+
+.btn-quick-signup:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.btn-quick-signup:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-quick-signup i {
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .quick-signup-buttons {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+  
+  .btn-quick-signup {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}
